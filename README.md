@@ -2,6 +2,8 @@
 
 The OpenESL integration puts the access point (AP) of [OpenESL](https://github.com/mathiasbk/openESL), open firmware for electronic shelf labels, and every tag into Home Assistant: each tag is a device with its battery, signal and last check-in, and the actions `openesl.send` and `openesl.send_image` put text and pictures on them, without YAML for the API or a token in `secrets.yaml`. It only uses the AP's HTTP API ([openapi.yaml](https://github.com/mathiasbk/openESL/blob/master/docs/openapi.yaml)): nothing on the AP needs to change.
 
+**[The wiki](https://github.com/mathiasbk/openesl-homeassistant/wiki)** is the step-by-step guide, with automations ready to copy: today's calendar, a meeting room sign, bin collection, weather, room climate and low battery alerts. This README is the reference.
+
 Without the integration, a `rest_command` does the same for text: [home-assistant.md](https://github.com/mathiasbk/openESL/blob/master/docs/home-assistant.md).
 
 ## Install
