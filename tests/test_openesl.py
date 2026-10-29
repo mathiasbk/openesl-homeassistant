@@ -197,20 +197,23 @@ async def test_new_tag_and_steady_last_seen(
     freezer.move_to("2026-10-29T12:00:00+00:00")
     aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     first = hass.states.get("sensor.tag_01234567_last_check_in").state
 
-    # A minute later the same poll is 73 s ago (a second of drift): the time stays put.
+    # Two minutes later the same poll is 133 s ago (a second of drift): the time stays put.
     # A third tag has appeared.
     new = "000002079575341D"
     aioclient_mock.clear_requests()
     aioclient_mock.get(
         f"{URL}/api/tags",
         json={"ap": {**AP, "uptime_s": 86461, "radio": {"connected": True}},
-              "tags": [tag(MAC1, seen_s_ago=73), tag(new)]},
+              "tags": [tag(MAC1, seen_s_ago=133), tag(new)]},
     )
     aioclient_mock.get(f"{URL}/api/health", json={**HEALTH, "problems": []})
-    freezer.tick(60)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    # The default interval is 120 s
+    freezer.tick(120)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
 
@@ -323,3 +326,127 @@ async def test_unload(hass: HomeAssistant, ap, entry) -> None:
     await _setup(hass, entry)
     assert await hass.config_entries.async_unload(entry.entry_id)
     assert entry.state is ConfigEntryState.NOT_LOADED
+
+
+# --- review fixes ------------------------------------------------------------------------
+
+
+URL2 = "http://192.168.0.171"
+
+
+def _second_ap(hass, aioclient_mock, tags, hostname="openesl-9f00"):
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    aioclient_mock.get(f"{URL2}/api/tags", json=tags)
+    aioclient_mock.get(f"{URL2}/api/health", json={**HEALTH, "problems": [], "with_problems": 0})
+    aioclient_mock.get(f"{URL2}/api/wifi", json={**WIFI, "hostname": hostname})
+    e = MockConfigEntry(domain=DOMAIN, unique_id=hostname, title=hostname,
+                        data={"host": "192.168.0.171", "token": TOKEN})
+    e.add_to_hass(hass)
+    return e
+
+
+async def test_tag_on_two_aps(hass: HomeAssistant, ap, entry, caplog, entity_registry) -> None:
+    """A tag moved to a new AP is still in the old one's table: one set of entities,
+    showing the AP that heard it last, and actions go there."""
+    entry2 = _second_ap(hass, ap, {"ap": AP, "tags": [tag(MAC1, seen_s_ago=5, rssi=-40)]})
+    # Setting up the integration sets up both entries
+    await _setup(hass, entry)
+    assert "does not generate unique IDs" not in caplog.text
+    assert entry2.state is ConfigEntryState.LOADED
+    assert hass.states.get("sensor.tag_01234567_signal").state == "-40"
+    assert hass.states.get("sensor.openesl_9f00_tags").state == "1"
+
+    ap.put(f"{URL2}/api/tags", json={"tags": [{"mac": MAC1, "content_id": 1, "changed": True, "pending": True}]})
+    await hass.services.async_call(DOMAIN, "send", {"mac": MAC1, "layout": "text", "fields": ["Hei"]}, blocking=True)
+    assert _sent(ap, "PUT", "/api/tags") == []
+    assert len([c for c in ap.mock_calls if c[0] == "PUT" and str(c[1]) == f"{URL2}/api/tags"]) == 1
+
+    # The first AP goes: the tag's entities follow the other one
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.tag_01234567_signal").state == "-40"
+    assert entity_registry.async_get("sensor.tag_01234567_signal").config_entry_id == entry2.entry_id
+
+
+async def test_legacy_hostname_user_flow(hass: HomeAssistant, aioclient_mock) -> None:
+    """APs set up with 0.6.0 or older are all named openesl: a second one is a new entry,
+    and the first keeps its address."""
+    for url in (URL, URL2):
+        aioclient_mock.get(f"{url}/api/tags", json=TAGS)
+        aioclient_mock.get(f"{url}/api/wifi", json={**WIFI, "hostname": "openesl"})
+    for host in (HOST, "192.168.0.171"):
+        result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"host": host, "token": TOKEN})
+        assert result["type"] is FlowResultType.CREATE_ENTRY
+    entries = hass.config_entries.async_entries(DOMAIN)
+    assert [e.data["host"] for e in entries] == [HOST, "192.168.0.171"]
+    assert [e.unique_id for e in entries] == [URL, URL2]
+
+
+async def test_legacy_hostname_zeroconf(hass: HomeAssistant) -> None:
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    MockConfigEntry(domain=DOMAIN, unique_id="http://openesl.local", data={"host": "openesl.local", "token": TOKEN}).add_to_hass(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_ZEROCONF}, data=_zc(name="openesl")
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    # Not overwritten with the discovered address
+    assert hass.config_entries.async_entries(DOMAIN)[0].data["host"] == "openesl.local"
+
+
+async def test_options_interval(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    assert entry.runtime_data.update_interval.total_seconds() == 120
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"scan_interval": 600})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    assert entry.options == {"scan_interval": 600}
+    assert entry.runtime_data.update_interval.total_seconds() == 600
+
+
+async def test_send_refused_after_a_batch(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    await _setup(hass, entry)
+    calls = []
+
+    async def put(method, url, data):
+        from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMockResponse
+
+        calls.append(data)
+        if len(calls) == 1:
+            return AiohttpClientMockResponse(method, url, json={"tags": [{"mac": r["mac"], "content_id": 1, "changed": True, "pending": True} for r in data["tags"]]})
+        return AiohttpClientMockResponse(method, url, status=422, json={"error": "the text is too long", "index": 3})
+
+    aioclient_mock.put(f"{URL}/api/tags", side_effect=put)
+    with pytest.raises(HomeAssistantError, match="first 50 tags"):
+        await hass.services.async_call(
+            DOMAIN, "send", {"mac": [f"{i:016X}" for i in range(1, 80)], "layout": "text", "fields": ["Hei"]}, blocking=True
+        )
+
+
+async def test_device_info_follows(hass: HomeAssistant, aioclient_mock, entry, freezer: FrozenDateTimeFactory) -> None:
+    """New tag firmware (OTA) and AP firmware show on the devices without a restart."""
+    aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    await _setup(hass, entry)
+    assert hass.states.get("sensor.openesl_1a2b_wifi_signal").state == "-58"
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{URL}/api/tags", json={"ap": {**AP, "fw": "0.9.0"}, "tags": [tag(MAC1, fw=900), TAGS["tags"][1]]})
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json={**WIFI, "rssi": -70})
+    freezer.tick(120)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    devices = dr.async_get(hass)
+    assert devices.async_get_device(identifiers={(DOMAIN, MAC1)}).sw_version == "0.9.0"
+    assert devices.async_get_device(identifiers={(DOMAIN, "openesl-1a2b")}).sw_version == "0.9.0"
+    assert hass.states.get("sensor.openesl_1a2b_wifi_signal").state == "-70"

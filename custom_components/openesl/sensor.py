@@ -17,11 +17,11 @@ from homeassistant.const import (
     EntityCategory,
     UnitOfElectricPotential,
 )
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import OpenEslConfigEntry, OpenEslCoordinator, OpenEslData
-from .entity import OpenEslApEntity, OpenEslTagEntity, fw_version
+from .entity import OpenEslApEntity, OpenEslTagEntity, setup_tag_platform, fw_version
 
 PARALLEL_UPDATES = 0
 
@@ -118,6 +118,16 @@ AP_SENSORS: tuple[ApSensorDescription, ...] = (
         value=lambda data: data.started,
     ),
     ApSensorDescription(
+        # The AP's own WiFi: the first thing to look at when it answers slowly
+        key="wifi_signal",
+        translation_key="wifi_signal",
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        state_class=SensorStateClass.MEASUREMENT,
+        native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value=lambda data: data.wifi.get("rssi"),
+    ),
+    ApSensorDescription(
         key="channel",
         translation_key="channel",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -141,18 +151,12 @@ async def async_setup_entry(
     coordinator = entry.runtime_data
     async_add_entities(OpenEslApSensor(coordinator, d) for d in AP_SENSORS)
 
-    known: set[str] = set()
-
-    @callback
-    def add_new_tags() -> None:
-        new = [mac for mac in coordinator.data.tags if mac not in known]
-        known.update(new)
-        async_add_entities(
-            OpenEslTagSensor(coordinator, mac, d) for mac in new for d in TAG_SENSORS
-        )
-
-    add_new_tags()
-    entry.async_on_unload(coordinator.async_add_listener(add_new_tags))
+    setup_tag_platform(
+        hass,
+        entry,
+        async_add_entities,
+        lambda c, mac: (OpenEslTagSensor(c, mac, d) for d in TAG_SENSORS),
+    )
 
 
 class OpenEslTagSensor(OpenEslTagEntity, SensorEntity):
@@ -166,7 +170,7 @@ class OpenEslTagSensor(OpenEslTagEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        return self.entity_description.value(self.coordinator.data, self.mac, self.tag)
+        return self.entity_description.value(self.source.data, self.mac, self.tag)
 
 
 class OpenEslApSensor(OpenEslApEntity, SensorEntity):

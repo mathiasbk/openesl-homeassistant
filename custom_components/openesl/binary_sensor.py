@@ -12,11 +12,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import OpenEslConfigEntry, OpenEslCoordinator, OpenEslData
-from .entity import OpenEslApEntity, OpenEslTagEntity
+from .entity import OpenEslApEntity, OpenEslTagEntity, setup_tag_platform
 
 PARALLEL_UPDATES = 0
 
@@ -59,18 +59,12 @@ async def async_setup_entry(
     if "radio" in coordinator.data.ap:
         async_add_entities([OpenEslRadioConnected(coordinator)])
 
-    known: set[str] = set()
-
-    @callback
-    def add_new_tags() -> None:
-        new = [mac for mac in coordinator.data.tags if mac not in known]
-        known.update(new)
-        async_add_entities(
-            OpenEslTagBinarySensor(coordinator, mac, d) for mac in new for d in TAG_BINARY
-        )
-
-    add_new_tags()
-    entry.async_on_unload(coordinator.async_add_listener(add_new_tags))
+    setup_tag_platform(
+        hass,
+        entry,
+        async_add_entities,
+        lambda c, mac: (OpenEslTagBinarySensor(c, mac, d) for d in TAG_BINARY),
+    )
 
 
 class OpenEslTagBinarySensor(OpenEslTagEntity, BinarySensorEntity):
@@ -84,13 +78,13 @@ class OpenEslTagBinarySensor(OpenEslTagEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool | None:
-        return self.entity_description.value(self.coordinator.data, self.mac, self.tag)
+        return self.entity_description.value(self.source.data, self.mac, self.tag)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         if self.entity_description.key != "problem":
             return None
-        attrs: dict[str, Any] = {"problems": self.coordinator.data.problems.get(self.mac, [])}
+        attrs: dict[str, Any] = {"problems": self.source.data.problems.get(self.mac, [])}
         if err := self.tag.get("content_error"):
             attrs["content_error"] = err
         return attrs

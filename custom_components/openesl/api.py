@@ -13,6 +13,8 @@ from urllib.parse import urlsplit
 import aiohttp
 
 TIMEOUT = aiohttp.ClientTimeout(total=15)
+# GET /api/tags is about 600 bytes a tag: give a large table on weak WiFi time
+LIST_TIMEOUT = aiohttp.ClientTimeout(total=60)
 # A PNG goes to the AP over WiFi, decoded as it arrives: give it longer
 IMAGE_TIMEOUT = aiohttp.ClientTimeout(total=60)
 
@@ -97,11 +99,11 @@ class OpenEslApi:
 
     async def get_tags(self) -> dict[str, Any]:
         """GET /api/tags: {"ap": {...}, "tags": [...]}."""
-        return await self._request("GET", "/api/tags")
+        return await self._request("GET", "/api/tags", timeout=LIST_TIMEOUT)
 
     async def get_health(self) -> dict[str, Any]:
         """GET /api/health: the tags that need attention."""
-        return await self._request("GET", "/api/health")
+        return await self._request("GET", "/api/health", timeout=LIST_TIMEOUT)
 
     async def get_wifi(self) -> dict[str, Any]:
         """GET /api/wifi: the AP's network, with its hostname."""

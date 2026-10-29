@@ -8,10 +8,19 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_HOST, CONF_TOKEN
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -26,7 +35,14 @@ from .api import (
     OpenEslError,
     normalize_host,
 )
-from .const import DOMAIN
+from .const import (
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    LEGACY_HOSTNAME,
+    MAX_SCAN_INTERVAL,
+    MIN_SCAN_INTERVAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +50,8 @@ TOKEN_SELECTOR = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD)
 
 
 class OpenEslConfigFlow(ConfigFlow, domain=DOMAIN):
-    """One entry per AP, known by its hostname (openesl-xxxx)."""
+    """One entry per AP, known by its hostname (openesl-xxxx), or by its address for an AP
+    still named "openesl" (set up with 0.6.0 or older: every such AP has that name)."""
 
     VERSION = 1
 
@@ -43,7 +60,8 @@ class OpenEslConfigFlow(ConfigFlow, domain=DOMAIN):
         self._name: str | None = None
 
     async def _try(self, host: str, token: str) -> tuple[dict[str, str], str | None]:
-        """Check the token with GET /api/tags. Returns (errors, hostname)."""
+        """Check the token with GET /api/tags. Returns (errors, hostname); the hostname is
+        None when it does not tell this AP from others."""
         try:
             api = OpenEslApi(async_get_clientsession(self.hass), host, token)
         except ValueError:
@@ -66,7 +84,8 @@ class OpenEslConfigFlow(ConfigFlow, domain=DOMAIN):
                 return {"base": "locked"}, None
             _LOGGER.exception("Unexpected answer from %s", host)
             return {"base": "unknown"}, None
-        return {}, (wifi.get("hostname") or "").lower() or None
+        hostname = (wifi.get("hostname") or "").lower()
+        return {}, None if hostname in ("", LEGACY_HOSTNAME) else hostname
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -106,9 +125,18 @@ class OpenEslConfigFlow(ConfigFlow, domain=DOMAIN):
         host = discovery_info.host
         if discovery_info.port and discovery_info.port != 80:
             host = f"{host}:{discovery_info.port}"
-        await self.async_set_unique_id(name)
-        # The AP got a new address: follow it
-        self._abort_if_unique_id_configured(updates={CONF_HOST: host})
+        if name == LEGACY_HOSTNAME:
+            # Not unique: known by its address, and not offered again once set up
+            # under that address or as openesl.local
+            known = {normalize_host(e.data[CONF_HOST]) for e in self._async_current_entries()}
+            if known & {normalize_host(host), normalize_host(f"{LEGACY_HOSTNAME}.local")}:
+                return self.async_abort(reason="already_configured")
+            await self.async_set_unique_id(normalize_host(host))
+            self._abort_if_unique_id_configured()
+        else:
+            await self.async_set_unique_id(name)
+            # The AP got a new address: follow it
+            self._abort_if_unique_id_configured(updates={CONF_HOST: host})
         self._host = host
         self._name = name
         self.context["title_placeholders"] = {"name": name}
@@ -123,7 +151,7 @@ class OpenEslConfigFlow(ConfigFlow, domain=DOMAIN):
             errors, hostname = await self._try(self._host, user_input[CONF_TOKEN])
             if not errors:
                 return self.async_create_entry(
-                    title=hostname or self._name or self._host,
+                    title=hostname or self._host,
                     data={CONF_HOST: self._host, CONF_TOKEN: user_input[CONF_TOKEN]},
                 )
         return self.async_show_form(
@@ -178,4 +206,44 @@ class OpenEslConfigFlow(ConfigFlow, domain=DOMAIN):
                 user_input or {CONF_HOST: entry.data[CONF_HOST]},
             ),
             errors=errors,
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return OpenEslOptionsFlow()
+
+
+class OpenEslOptionsFlow(OptionsFlow):
+    """How often the AP is read."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(
+                data={CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])}
+            )
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(
+                    {
+                        vol.Required(CONF_SCAN_INTERVAL): NumberSelector(
+                            NumberSelectorConfig(
+                                min=MIN_SCAN_INTERVAL,
+                                max=MAX_SCAN_INTERVAL,
+                                step=1,
+                                unit_of_measurement="s",
+                                mode=NumberSelectorMode.BOX,
+                            )
+                        )
+                    }
+                ),
+                {
+                    CONF_SCAN_INTERVAL: self.config_entry.options.get(
+                        CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                    )
+                },
+            ),
         )

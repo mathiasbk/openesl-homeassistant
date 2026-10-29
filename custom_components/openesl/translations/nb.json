@@ -84,6 +84,9 @@
       },
       "scheduled": {
         "name": "Planlagt innhold"
+      },
+      "wifi_signal": {
+        "name": "WiFi-signal"
       }
     },
     "binary_sensor": {
@@ -215,6 +218,22 @@
     },
     "cannot_read": {
       "message": "Kunne ikke lese {path}: {error}"
+    },
+    "ap_refused_partly": {
+      "message": "Aksesspunktet avviste det ({status}): {message}. De første {done} taggene fikk innholdet før det."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Innstillinger",
+        "data": {
+          "scan_interval": "Oppdateringsintervall"
+        },
+        "data_description": {
+          "scan_interval": "Hvor ofte taggene leses fra AP-en. Svaret er omtrent 600 byte per tagg, så med mange tagger eller svak WiFi bør det leses sjeldnere. Taggene selv poller AP-en hvert 60. sekund som standard."
+        }
+      }
     }
   }
 }

@@ -41,7 +41,7 @@ from .const import (
     SERVICE_SEND,
     SERVICE_SEND_IMAGE,
 )
-from .coordinator import OpenEslConfigEntry
+from .coordinator import OpenEslConfigEntry, tag_source
 
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 MAC_RE = re.compile(r"^[0-9A-F]{16}$")
@@ -135,6 +135,8 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> dict[str, list[str]]:
             (eid for eid in (device.config_entries if device else ()) if eid in by_id),
             None,
         )
+        if mac is not None and entry_id is not None and (source := tag_source(hass, mac)):
+            entry_id = source.config_entry.entry_id
         if mac is None or entry_id is None:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
@@ -149,11 +151,10 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> dict[str, list[str]]:
             translation_domain=DOMAIN, translation_key="unknown_ap"
         )
     for mac in call.data.get(ATTR_MAC, []):
-        # The AP that knows the tag; a MAC no AP lists yet goes to the one AP (it keeps
+        # The AP that heard the tag last; a MAC no AP lists yet goes to the one AP (it keeps
         # the content until the tag appears), or to config_entry_id with more than one
-        entry_id = chosen or next(
-            (e.entry_id for e in entries if mac in e.runtime_data.data.tags), None
-        )
+        source = tag_source(hass, mac)
+        entry_id = chosen or (source.config_entry.entry_id if source else None)
         if entry_id is None:
             if len(entries) > 1:
                 raise ServiceValidationError(
@@ -169,7 +170,18 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> dict[str, list[str]]:
     return out
 
 
-def _error(err: OpenEslError) -> HomeAssistantError:
+def _error(err: OpenEslError, done: int = 0) -> HomeAssistantError:
+    if isinstance(err, OpenEslApiError) and done:
+        # A later batch of 50 was refused: the ones before it are on the AP
+        return HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="ap_refused_partly",
+            translation_placeholders={
+                "status": str(err.status),
+                "message": err.message,
+                "done": str(done),
+            },
+        )
     if isinstance(err, OpenEslApiError):
         # 422 and the like: the AP says what is wrong (text too long, unknown layout)
         return HomeAssistantError(
@@ -215,7 +227,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
                     rows = [{"mac": m, **content} for m in macs[i : i + BATCH_MAX]]
                     results += await coordinator.api.set_tags(rows)
             except OpenEslError as err:
-                raise _error(err) from err
+                raise _error(err, len(results)) from err
             finally:
                 await coordinator.async_request_refresh()
         return {"tags": results}

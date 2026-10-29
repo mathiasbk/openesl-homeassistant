@@ -19,9 +19,13 @@ Settings → Devices & services. An AP on the same network shows up by itself as
 
 When the AP gets a new token, Home Assistant asks for it (a **Reauthenticate** card under Settings → Devices & services). Five wrong tokens in a row lock the AP's API for 60 s, and the integration stops asking the AP until it has the new token, so the dashboard is not locked out by it. A new address: the AP's menu (⋮) → **Reconfigure**.
 
+Each AP is known by its name. An AP set up with firmware 0.6.0 or older is named `openesl`, like every other AP of that age, so it is known by its address instead: add it with the address it keeps (a DHCP reservation), and give it its own name on its setup page if you can. An AP that is renamed after it was added (`openesl-xxxx` to `shop`) is not found by its name any more and is a new AP to Home Assistant: delete it under Settings → Devices & services and add it again with its new name. The tags keep their entities.
+
+**Options** (the AP's ⚙): how often the AP is read, every 120 s unless you change it (30 s to an hour). `GET /api/tags` is about 600 bytes a tag, so with 200 tags each read is about 120 KB that the AP sends over WiFi between the tags' polls; with many tags or weak WiFi, read it less often. The tags' battery and signal change slowly, and with a poll interval of 10 minutes on the tags nothing new comes sooner.
+
 ## What it shows
 
-Every minute it reads `GET /api/tags` and `GET /api/health` from the AP. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
+Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /api/wifi` from the AP. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
 
 | Device | Entity | From the AP |
 |---|---|---|
@@ -33,9 +37,9 @@ Every minute it reads `GET /api/tags` and `GET /api/health` from the AP. A new t
 | Tag | Update pending, Firmware | diagnostic: the tag does not show its content yet; its firmware |
 | Tag | Poll interval, Lost polls | diagnostic, off until you turn them on |
 | AP | Tags, Tags with problems | how many tags the AP knows, and how many `/api/health` lists |
-| AP | Firmware, Started, Radio channel, Radio | diagnostic; Radio only on an AP with a network radio (an ESP32-C6 over WiFi) |
+| AP | Firmware, Started, WiFi signal, Radio channel, Radio | diagnostic; WiFi signal is the AP's own (the first thing to look at when it answers slowly); Radio only on an AP with a network radio (an ESP32-C6 over WiFi) |
 
-A tag the AP no longer lists turns unavailable; delete its device from its page (⋮ → Delete) when it is gone for good.
+A tag the AP no longer lists turns unavailable; delete its device from its page (⋮ → Delete) when it is gone for good. A tag moved to another AP stays in the old AP's table for a while: with both APs in Home Assistant it has one device, which shows what the AP that heard it last says, and the actions send to that AP.
 
 ## Actions
 
@@ -63,18 +67,26 @@ data:
 | `at` | a time to show it from instead of now (the AP keeps it; it needs to know the time) |
 | `config_entry_id` | with more than one AP: where a MAC no AP lists yet goes |
 
-Many tags in one call go to the AP in batches of 50. The action answers with the AP's reply per tag (`content_id`, `changed`, `pending`), for `response_variable`. When the AP refuses the content (text too long, an unknown layout) the action fails with the AP's message, and the tags keep what they show.
+Many tags in one call go to the AP in batches of 50. The action answers with the AP's reply per tag (`content_id`, `changed`, `pending`), for `response_variable`. When the AP refuses the content (text too long, an unknown layout) the action fails with the AP's message, and the tags keep what they show. The AP takes or refuses each batch of 50 as a whole, so with more than 50 tags the batches before the refused one have already gone; the message says how many tags got the content.
 
-The 3D printer automation in [home-assistant.md](https://github.com/mathiasbk/openESL/blob/master/docs/home-assistant.md) becomes:
+Any `rest_command.esl_tag_text` in the automations of [home-assistant.md](https://github.com/mathiasbk/openESL/blob/master/docs/home-assistant.md) becomes `openesl.send` with the same `layout` and `fields`, and the tag instead of `mac`. A whole automation that shows a sensor on a tag every 10 minutes:
 
 ```yaml
+alias: Outdoor temperature on a tag
+triggers:
+  - trigger: time_pattern
+    minutes: /10
+actions:
   - action: openesl.send
     data:
-      device_id: 4f0c6a...
-      layout: 3d-printer
-      fields: >-
-        {{ [printer, '', pct | string, 'Left ' ~ ..., 'Done at ' ~ ..., ' ' * (pct | int * 31 // 100)] }}
+      device_id: 4f0c6a...           # the tag: pick it in the UI
+      layout: text
+      fields:
+        - "Outside"
+        - "{{ states('sensor.outdoor_temperature') | float(0) | round(0) }} °C"
 ```
+
+Rounding the temperature keeps the text the same when little has changed, so the tag is not redrawn for it (a clock on the tag would redraw it every time).
 
 ### `openesl.send_image`
 
@@ -98,7 +110,7 @@ Everything in [home-assistant.md, "Limits and timing"](https://github.com/mathia
 
 ## For developers
 
-The tests are in `tests/` (Home Assistant's test harness, Python 3.13): `pip install -r requirements_test.txt`, then `pytest`. The last test runs against the OpenESL simulator through the esl-client bridge, from an openESL checkout next to this one (or in `OPENESL_REPO`): `make -C ../openESL/sim build/29/esl-sim`, then `OPENESL_LIVE_URL=sim pytest`. CI does the same, with Home Assistant's `hassfest` and HACS's checks.
+The tests are in `tests/` (Home Assistant's test harness, Python 3.13): `pip install -r requirements_test.txt`, then `pytest`. The last test runs against the OpenESL simulator through the esl-client bridge, from an openESL checkout next to this one (or in `OPENESL_REPO`): `make -C ../openESL/sim build/29/esl-sim`, then `OPENESL_LIVE_URL=sim pytest`. CI does the same, with Home Assistant's `hassfest` and HACS's checks. CI builds the simulator from openESL's `development` branch, so a change there can turn this repository's CI red.
 
 ## License
 

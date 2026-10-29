@@ -1,11 +1,16 @@
 """Constants for the OpenESL integration."""
 
-from datetime import timedelta
-
 DOMAIN = "openesl"
 
-# GET /api/tags once a minute: the tags themselves poll the AP every 60 s by default
-SCAN_INTERVAL = timedelta(seconds=60)
+# How often GET /api/tags is read (the options): with ~200 tags its reply is about 120 KB,
+# which a C6 on weak WiFi sends between tag polls, so not every minute by default
+CONF_SCAN_INTERVAL = "scan_interval"
+DEFAULT_SCAN_INTERVAL = 120
+MIN_SCAN_INTERVAL = 30
+MAX_SCAN_INTERVAL = 3600
+
+# APs set up with firmware 0.6.0 or older are all named "openesl": not an id
+LEGACY_HOSTNAME = "openesl"
 
 # PUT /api/tags takes at most 50 rows (RAM on the AP)
 BATCH_MAX = 50

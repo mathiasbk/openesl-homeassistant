@@ -7,7 +7,7 @@ minute for the sensors, PUT /api/tags and /api/tags/{mac}/image for the actions.
 from __future__ import annotations
 
 from homeassistant.const import CONF_HOST, CONF_TOKEN, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -15,7 +15,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .api import OpenEslApi
 from .const import DOMAIN
-from .coordinator import OpenEslConfigEntry, OpenEslCoordinator
+from .coordinator import OpenEslConfigEntry, OpenEslCoordinator, coordinators
 from .services import async_setup_services
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
@@ -35,8 +35,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     coordinator = OpenEslCoordinator(hass, entry, api)
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
+    coordinators(hass)[entry.entry_id] = coordinator
+
+    @callback
+    def forget() -> None:
+        coordinators(hass).pop(entry.entry_id, None)
+
+    entry.async_on_unload(forget)
+    # A new update interval in the options
+    entry.async_on_unload(entry.add_update_listener(_reload))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def _reload(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> bool:
