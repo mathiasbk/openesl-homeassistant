@@ -1,0 +1,36 @@
+# A release whenever the version in manifest.json changes on main: tags v<version> and makes
+# the GitHub release with that version's CHANGELOG.md section as its text (tools/changelog.py),
+# so HACS offers it. Nothing happens when the tag already exists, so other pushes to main are
+# no-ops. By hand: Actions -> Release -> Run workflow.
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - custom_components/openesl/manifest.json
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Release v<version> unless it exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver=$(python3 tools/changelog.py)
+          if gh release view "v$ver" >/dev/null 2>&1; then
+            echo "v$ver is already released"
+            exit 0
+          fi
+          python3 tools/changelog.py --notes > notes.md
+          gh release create "v$ver" --target "$GITHUB_SHA" --title "v$ver" --notes-file notes.md

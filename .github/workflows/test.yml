@@ -25,6 +25,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
+      - name: CHANGELOG.md has the version in manifest.json, with upgrade instructions
+        run: python3 tools/changelog.py --check
       - name: Install the Home Assistant test harness
         run: python -m pip install -r requirements_test.txt
       - name: Simulator (openESL/sim)
