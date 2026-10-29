@@ -1,0 +1,48 @@
+# The integration's tests against a mocked AP, then against the OpenESL simulator behind the
+# esl-client bridge (both from github.com/mathiasbk/openESL), and Home Assistant's own checks
+# (hassfest) and HACS's.
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: mathiasbk/openESL
+          ref: development
+          path: openESL
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Install the Home Assistant test harness
+        run: python -m pip install -r requirements_test.txt
+      - name: Simulator (openESL/sim)
+        run: make -C openESL/sim build/29/esl-sim
+      - name: Tests, the last one against the simulator
+        run: OPENESL_LIVE_URL=sim OPENESL_REPO=openESL python -m pytest -v
+
+  hassfest:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration
+          # The brand icon goes to github.com/home-assistant/brands before the HACS default list
+          ignore: brands

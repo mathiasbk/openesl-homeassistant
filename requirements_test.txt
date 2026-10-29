@@ -1,0 +1,2 @@
+# The Home Assistant test harness (it pins a Home Assistant release); needs Python 3.13
+pytest-homeassistant-custom-component==0.13.316

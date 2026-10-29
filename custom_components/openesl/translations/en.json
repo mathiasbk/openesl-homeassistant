@@ -1,0 +1,141 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "OpenESL access point",
+        "description": "The AP's address on your network and its API token (set on the AP's setup page).",
+        "data": {
+          "host": "Host",
+          "token": "API token"
+        },
+        "data_description": {
+          "host": "The AP's name, `openesl-xxxx.local` on an AP set up after 0.6.0 (`openesl.local` before), or its IP address.",
+          "token": "The token from the AP's setup page (`/setup`)."
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "OpenESL access point found",
+        "description": "Add the access point {name} at {host}? Its API token is on the AP's setup page.",
+        "data": {
+          "token": "API token"
+        }
+      },
+      "reauth_confirm": {
+        "title": "New API token",
+        "description": "The access point {name} no longer takes the token. Enter the one it has now.",
+        "data": {
+          "token": "API token"
+        }
+      },
+      "reconfigure": {
+        "title": "Change the address",
+        "data": {
+          "host": "Host"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No answer from an OpenESL access point at that address.",
+      "invalid_auth": "Wrong API token.",
+      "invalid_host": "Not a host name or IP address.",
+      "locked": "The AP is refusing every request for 60 s after five wrong tokens. Wait a minute and try again.",
+      "wrong_ap": "That address is another access point.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This access point is already set up.",
+      "not_openesl": "Not an OpenESL access point.",
+      "reauth_successful": "The token is updated.",
+      "reconfigure_successful": "The address is updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "data": {
+          "scan_interval": "Update interval"
+        },
+        "data_description": {
+          "scan_interval": "How often the tags are read from the AP. The reply is about 600 bytes a tag, so with many tags or weak WiFi read less often. The tags themselves poll the AP every 60 s by default."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery_voltage": { "name": "Battery voltage" },
+      "signal": { "name": "Signal" },
+      "last_seen": { "name": "Last check-in" },
+      "firmware": { "name": "Firmware" },
+      "poll_interval": { "name": "Poll interval" },
+      "lost_polls": { "name": "Lost polls" },
+      "tags": { "name": "Tags" },
+      "tags_with_problems": { "name": "Tags with problems" },
+      "started": { "name": "Started" },
+      "wifi_signal": { "name": "WiFi signal" },
+      "channel": { "name": "Radio channel" },
+      "scheduled": { "name": "Scheduled content" }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem",
+        "state_attributes": {
+          "problems": { "name": "Problems" },
+          "content_error": { "name": "Content error" }
+        }
+      },
+      "battery_low": { "name": "Battery" },
+      "pending": { "name": "Update pending" },
+      "radio": { "name": "Radio" }
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Send",
+      "description": "Puts text on tags with a layout: the built-in `text` (4 lines) or `price`, or a layout in the AP's layout file. Only content that changed is drawn.",
+      "fields": {
+        "device_id": { "name": "Tags", "description": "The tags to send to." },
+        "mac": { "name": "MAC", "description": "Tags by their 16-digit MAC instead (a tag the AP does not know yet gets it when it appears)." },
+        "layout": { "name": "Layout", "description": "`text`, `price` or the name of a layout in the AP's layout file." },
+        "fields": { "name": "Fields", "description": "The text, in the layout's field order. All fields together take at most about 90 characters." },
+        "price_highlight": { "name": "Highlight", "description": "White on black for the price (`price`) or the layout's highlight elements." },
+        "frame": { "name": "Frame", "description": "A black frame around the screen (`text`) or the layout's frame elements." },
+        "at": { "name": "At", "description": "Show it from this time instead of now (the AP keeps it until then)." },
+        "config_entry_id": { "name": "Access point", "description": "With more than one AP: the one a MAC it does not list yet goes to." }
+      }
+    },
+    "send_image": {
+      "name": "Send picture",
+      "description": "Shows a PNG on tags. It must be the tag's screen size: 296 x 128 for the 2.9\", 200 x 200 for the 1.54\".",
+      "fields": {
+        "device_id": { "name": "Tags", "description": "The tags to send to." },
+        "mac": { "name": "MAC", "description": "Tags by their 16-digit MAC instead." },
+        "path": { "name": "File", "description": "The PNG on the Home Assistant machine, in a folder in `allowlist_external_dirs` (or under /config/www)." },
+        "dither": { "name": "Dither", "description": "Mix black and white for shades of grey (photos) instead of taking the nearest." },
+        "config_entry_id": { "name": "Access point", "description": "With more than one AP: the one a MAC it does not list yet goes to." }
+      }
+    },
+    "refresh": {
+      "name": "Refresh",
+      "description": "Reads the tags from the AP now instead of at the next minute.",
+      "fields": {
+        "config_entry_id": { "name": "Access point", "description": "Only this AP." }
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": { "message": "No OpenESL access point is set up and running." },
+    "not_a_tag": { "message": "{target} is not an OpenESL tag." },
+    "unknown_ap": { "message": "That access point is not set up or not running." },
+    "which_ap": { "message": "No access point lists the tag {mac} yet: choose which one under Access point." },
+    "no_tags": { "message": "Choose at least one tag." },
+    "ap_refused": { "message": "The access point refused it ({status}): {message}" },
+    "ap_refused_partly": { "message": "The access point refused it ({status}): {message}. The first {done} tags got the content before that." },
+    "auth": { "message": "The access point no longer takes the API token." },
+    "cannot_connect": { "message": "No answer from the access point: {error}" },
+    "path_not_allowed": { "message": "Home Assistant may not read {path}: add its folder to allowlist_external_dirs." },
+    "cannot_read": { "message": "Could not read {path}: {error}" }
+  }
+}

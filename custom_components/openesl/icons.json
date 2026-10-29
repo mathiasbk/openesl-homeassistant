@@ -1,0 +1,22 @@
+{
+  "entity": {
+    "sensor": {
+      "last_seen": { "default": "mdi:clock-check-outline" },
+      "firmware": { "default": "mdi:chip" },
+      "poll_interval": { "default": "mdi:timer-outline" },
+      "lost_polls": { "default": "mdi:wifi-strength-alert-outline" },
+      "tags": { "default": "mdi:tag-multiple-outline" },
+      "tags_with_problems": { "default": "mdi:tag-off-outline" },
+      "channel": { "default": "mdi:radio-tower" },
+      "scheduled": { "default": "mdi:calendar-clock" }
+    },
+    "binary_sensor": {
+      "pending": { "default": "mdi:timer-sand" }
+    }
+  },
+  "services": {
+    "send": { "service": "mdi:tag-text-outline" },
+    "send_image": { "service": "mdi:image-outline" },
+    "refresh": { "service": "mdi:refresh" }
+  }
+}

@@ -1,0 +1,70 @@
+send:
+  fields:
+    device_id:
+      selector:
+        device:
+          integration: openesl
+          multiple: true
+    mac:
+      example: "00000123456789A8"
+      selector:
+        text:
+          multiple: true
+    layout:
+      required: true
+      example: text
+      selector:
+        text:
+    fields:
+      required: true
+      example: '["Printing: 42 %", "Benchy.3mf", "Left: 1 h 25 min"]'
+      selector:
+        object:
+    price_highlight:
+      selector:
+        boolean:
+    frame:
+      selector:
+        boolean:
+    at:
+      selector:
+        datetime:
+    config_entry_id:
+      advanced: true
+      selector:
+        config_entry:
+          integration: openesl
+
+send_image:
+  fields:
+    device_id:
+      selector:
+        device:
+          integration: openesl
+          multiple: true
+    mac:
+      example: "00000123456789A8"
+      selector:
+        text:
+          multiple: true
+    path:
+      required: true
+      example: /config/www/tag.png
+      selector:
+        text:
+    dither:
+      default: false
+      selector:
+        boolean:
+    config_entry_id:
+      advanced: true
+      selector:
+        config_entry:
+          integration: openesl
+
+refresh:
+  fields:
+    config_entry_id:
+      selector:
+        config_entry:
+          integration: openesl
