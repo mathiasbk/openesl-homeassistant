@@ -171,16 +171,12 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> dict[str, list[str]]:
 
 
 def _error(err: OpenEslError, done: int = 0) -> HomeAssistantError:
-    if isinstance(err, OpenEslApiError) and done:
-        # A later batch of 50 was refused: the ones before it are on the AP
+    if done:
+        # A later batch of 50 failed: the ones before it are on the AP
         return HomeAssistantError(
             translation_domain=DOMAIN,
-            translation_key="ap_refused_partly",
-            translation_placeholders={
-                "status": str(err.status),
-                "message": err.message,
-                "done": str(done),
-            },
+            translation_key="failed_partly",
+            translation_placeholders={"error": str(err), "done": str(done)},
         )
     if isinstance(err, OpenEslApiError):
         # 422 and the like: the AP says what is wrong (text too long, unknown layout)

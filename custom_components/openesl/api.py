@@ -95,7 +95,7 @@ class OpenEslApi:
                     raise OpenEslApiError(resp.status, msg or resp.reason or "error")
                 return body
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
-            raise OpenEslConnectionError(f"{self.url}: {err or type(err).__name__}") from err
+            raise OpenEslConnectionError(f"{self.url}: {str(err) or type(err).__name__}") from err
 
     async def get_tags(self) -> dict[str, Any]:
         """GET /api/tags: {"ap": {...}, "tags": [...]}."""
