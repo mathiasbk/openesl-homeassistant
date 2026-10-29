@@ -15,7 +15,7 @@ This wiki is the how-to guide: setting it up, and automations ready to copy. The
 |---|---|---|
 | [Calendar on a tag](Calendar) | Today's appointments, or a meeting room's "now" and "next" | `text`, `meeting-room` |
 | [Bin collection](Bin-collection) | The next pickup day and what is collected, from a waste calendar | `bin-collection` |
-| [Weather](Weather) | Temperature, a weather symbol, today's low and high, wind and rain | `weather` |
+| [Weather](Weather) | Temperature, a weather symbol, today's low and high, wind and rain (needs the next OpenESL release) | `weather` |
 | [Room climate](Room-climate) | A room's temperature and humidity | `room-climate` |
 | [Low battery alerts](Low-battery-alerts) | A notification when a tag's battery runs low or it goes silent | none |
 

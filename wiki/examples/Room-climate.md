@@ -30,11 +30,11 @@ actions:
         {%- set t = states('sensor.living_room_temperature') | float(0) -%}
         {%- set h = states('sensor.living_room_humidity') | float(0) -%}
         {{ ['Living room',
-            (((t * 2) | round(0)) / 2) | string | replace('.', ','),
+            ('%g' | format(((t * 2) | round(0)) / 2)) | replace('.', ','),
             ((h / 5) | round(0) * 5) | int,
             'Since ' ~ now().strftime('%H:%M')] }}
 ```
 
-The tag shows, for example, **Living room**, **21,5** °C, **45** % and **Since 14:05**.
+The tag shows, for example, **Living room**, **21,5** °C (or **22** for a whole degree), **45** % and **Since 14:05**.
 
 The condition is what keeps the battery going: a temperature sensor reports every few tenths of a degree, and without it the tag would be redrawn for each one. With half degrees and 5 % steps it is redrawn a few times a day. The time in the last field only changes when a value does, so it says when the room last changed, not when the tag was last drawn.

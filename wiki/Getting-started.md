@@ -24,7 +24,7 @@ The AP and every tag it knows become devices. A tag is named after the first 8 d
 
 ## 3. Send the first text
 
-Developer tools → **Actions**. Pick **OpenESL: Send text**, switch to YAML mode and paste:
+Developer tools → **Actions**. Pick **OpenESL: Send**, switch to YAML mode and paste:
 
 ```yaml
 action: openesl.send

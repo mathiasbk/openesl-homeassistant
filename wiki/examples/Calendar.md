@@ -6,7 +6,7 @@ Replace `calendar.family` with your calendar, and pick your tag in the visual ed
 
 ## Today's appointments (layout `text`)
 
-The heading and the first three events of the day, on four lines. It works on every AP, since `text` is built in.
+The heading and the next three events of the day (the one going on now included), on four lines. It works on every AP, since `text` is built in.
 
 ```yaml
 alias: Calendar on a tag
@@ -22,12 +22,14 @@ triggers:
     entity_id: calendar.family
   - trigger: time
     at: "00:05:00"
+  - trigger: homeassistant
+    event: start
 actions:
   - action: calendar.get_events
     target:
       entity_id: calendar.family
     data:
-      start_date_time: "{{ today_at() }}"
+      start_date_time: "{{ now() }}"
       end_date_time: "{{ today_at() + timedelta(days=1) }}"
     response_variable: cal
   - variables:
@@ -54,7 +56,7 @@ All day Birthday Ola No
 18:00 Football training
 ```
 
-All-day events come first. Titles are cut to 15 characters to stay inside the [text limit](Sending-text#the-text-limit).
+Events that are over drop off the list, so each start and end trigger moves it on. All-day events come first. Titles are cut to 15 characters to stay inside the [text limit](Sending-text#the-text-limit).
 
 ## Meeting room: now and next (layout `meeting-room`)
 
@@ -85,4 +87,4 @@ The calendar gives the times as text with a time zone, and the comparison with `
 
 ## Battery
 
-The tag only gets a new picture when the text changes. These triggers send when an event starts or ends and once a night, so the tag is redrawn a few times a day. Do not add a trigger every minute with a clock in the text: that redraws the tag every minute.
+The tag only gets a new picture when the text changes. These triggers send when an event starts or ends, once a night and when Home Assistant starts, so the tag is redrawn a few times a day. Do not add a trigger every minute with a clock in the text: that redraws the tag every minute.
