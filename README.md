@@ -112,6 +112,10 @@ Everything in [home-assistant.md, "Limits and timing"](https://github.com/mathia
 
 The tests are in `tests/` (Home Assistant's test harness, Python 3.13): `pip install -r requirements_test.txt`, then `pytest`. The last test runs against the OpenESL simulator through the esl-client bridge, from an openESL checkout next to this one (or in `OPENESL_REPO`): `make -C ../openESL/sim build/29/esl-sim`, then `OPENESL_LIVE_URL=sim pytest`. CI does the same, with Home Assistant's `hassfest` and HACS's checks. CI builds the simulator from openESL's `development` branch, so a change there can turn this repository's CI red.
 
+## Icon
+
+The icon is in `custom_components/openesl/brand/` (the tag from the OpenESL web page). Home Assistant 2026.3 and newer shows it; older versions show a placeholder.
+
 ## License
 
 MIT, like OpenESL.

@@ -44,5 +44,3 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          # The brand icon goes to github.com/home-assistant/brands before the HACS default list
-          ignore: brands
