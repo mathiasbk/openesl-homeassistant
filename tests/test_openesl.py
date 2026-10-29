@@ -478,7 +478,8 @@ async def test_send_connection_lost_after_a_batch(hass: HomeAssistant, ap, entry
         raise TimeoutError
 
     ap.put(f"{URL}/api/tags", side_effect=put)
-    with pytest.raises(HomeAssistantError, match="first 50 tags"):
+    # The timeout is named, not an empty error
+    with pytest.raises(HomeAssistantError, match=r"TimeoutError\). The first 50 tags"):
         await hass.services.async_call(
             DOMAIN, "send", {"mac": [f"{i:016X}" for i in range(1, 80)], "layout": "text", "fields": ["Hei"]}, blocking=True
         )
