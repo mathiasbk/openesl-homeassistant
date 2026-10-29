@@ -97,9 +97,15 @@ class OpenEslApi:
         except (aiohttp.ClientError, asyncio.TimeoutError) as err:
             raise OpenEslConnectionError(f"{self.url}: {str(err) or type(err).__name__}") from err
 
-    async def get_tags(self) -> dict[str, Any]:
-        """GET /api/tags: {"ap": {...}, "tags": [...]}."""
-        return await self._request("GET", "/api/tags", timeout=LIST_TIMEOUT)
+    async def get_tags(self, since: str | None = None) -> dict[str, Any]:
+        """GET /api/tags: {"ap": {...}, "tags": [...]}.
+
+        With since (the "since" of the last reply, or "" the first time) an AP that knows
+        it sends only the tags that changed, with "full": false and the next "since"; an
+        older AP ignores it and sends them all.
+        """
+        params = None if since is None else {"since": since}
+        return await self._request("GET", "/api/tags", params=params, timeout=LIST_TIMEOUT)
 
     async def get_health(self) -> dict[str, Any]:
         """GET /api/health: the tags that need attention."""

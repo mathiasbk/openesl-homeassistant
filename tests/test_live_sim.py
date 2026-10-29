@@ -118,6 +118,8 @@ async def test_live(hass: HomeAssistant, tmp_path, ap_url) -> None:
         await asyncio.sleep(1)
         await entry.runtime_data.async_refresh()
         await hass.async_block_till_done()
+    # The AP answers ?since= (openESL #270): later reads hold only the tags that changed
+    assert entry.runtime_data._since
     name = f"tag_{SIM_MAC[4:12].lower()}"
     assert hass.states.get(f"sensor.{name}_battery_voltage").state == "2.95"
     assert hass.states.get(f"sensor.{name}_signal").state not in ("unknown", "unavailable")

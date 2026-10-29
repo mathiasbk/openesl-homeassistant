@@ -223,6 +223,68 @@ async def test_new_tag_and_steady_last_seen(
     assert hass.states.get("sensor.tag_02066346_signal").state == "unavailable"
 
 
+async def test_only_changed_tags(
+    hass: HomeAssistant, aioclient_mock, entry, freezer: FrozenDateTimeFactory
+) -> None:
+    """GET /api/tags?since=: a reply with "full": false holds only the tags that changed."""
+    freezer.move_to("2026-10-29T12:00:00+00:00")
+    aioclient_mock.get(f"{URL}/api/tags", json={**TAGS, "since": "5eed0001-1", "full": True})
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    await _setup(hass, entry)
+    seen2 = hass.states.get("sensor.tag_02066346_last_check_in").state
+
+    # Two minutes later only MAC1 has polled, with a lower battery
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(
+        f"{URL}/api/tags",
+        json={"ap": AP, "since": "5eed0001-2", "full": False,
+              "tags": [tag(MAC1, seen_s_ago=3, battery_mv=2900)]},
+    )
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    freezer.tick(120)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+
+    assert [str(url) for m, url, *_ in aioclient_mock.mock_calls if "/api/tags" in str(url)] == [
+        f"{URL}/api/tags?since=5eed0001-1"
+    ]
+    assert hass.states.get("sensor.tag_01234567_battery_voltage").state == "2.9"
+    assert hass.states.get("sensor.tag_01234567_last_check_in").state == "2026-10-29T12:01:57+00:00"
+    # The tag not in the reply is still there, with the same check-in
+    assert hass.states.get("sensor.tag_02066346_signal").state == "-80"
+    assert hass.states.get("sensor.tag_02066346_last_check_in").state == seen2
+    coordinator = entry.runtime_data
+    assert coordinator.data.tags[MAC2]["seen_s_ago"] == 12 + 120
+
+    # "full": true again (the AP restarted): the list is replaced, MAC2 is gone
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(
+        f"{URL}/api/tags",
+        json={"ap": AP, "since": "77770001-1", "full": True, "tags": [tag(MAC1)]},
+    )
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    freezer.tick(120)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert [str(url) for m, url, *_ in aioclient_mock.mock_calls if "/api/tags" in str(url)] == [
+        f"{URL}/api/tags?since=5eed0001-2"
+    ]
+    assert hass.states.get("sensor.tag_02066346_signal").state == "unavailable"
+
+
+async def test_older_ap_ignores_since(hass: HomeAssistant, ap, entry) -> None:
+    """An AP without since sends every tag and no "since": the next read asks with since= again."""
+    await _setup(hass, entry)
+    coordinator = entry.runtime_data
+    await coordinator.async_refresh()
+    calls = [str(url) for m, url, *_ in ap.mock_calls if "/api/tags" in str(url)]
+    assert calls == [f"{URL}/api/tags?since=", f"{URL}/api/tags?since="]
+    assert set(coordinator.data.tags) == {MAC1, MAC2}
+
+
 async def test_ap_unreachable(hass: HomeAssistant, aioclient_mock, entry) -> None:
     aioclient_mock.get(f"{URL}/api/tags", exc=TimeoutError)
     await hass.config_entries.async_setup(entry.entry_id)
