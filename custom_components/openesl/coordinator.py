@@ -1,4 +1,9 @@
-"""Polls the AP: GET /api/tags, /api/health and /api/wifi, every scan_interval seconds."""
+"""Polls the AP: GET /api/tags, /api/health and /api/wifi, every scan_interval seconds.
+
+GET /api/tags asks with ?since= for only the tags that changed since the last read
+(openESL #270); the others are kept from the last read, their seen_s_ago counted on
+from their last check-in.
+"""
 
 from __future__ import annotations
 
@@ -91,10 +96,12 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
             always_update=False,
         )
         self.api = api
+        # The AP's "since" from the last read that went through; "" gets every tag
+        self._since = ""
 
     async def _async_update_data(self) -> OpenEslData:
         try:
-            listing = await self.api.get_tags()
+            listing = await self.api.get_tags(self._since)
             health = await self.api.get_health()
             try:
                 wifi = await self.api.get_wifi()
@@ -110,6 +117,14 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
         now = dt_util.utcnow()
         old = self.data
         tags = {t["mac"].upper(): t for t in listing.get("tags", [])}
+        if listing.get("full") is False and old is not None:
+            # Only the tags that changed: the rest as they were, a check-in further back
+            for mac, tag in old.tags.items():
+                if mac in tags:
+                    continue
+                if (before := old.last_seen.get(mac)) is not None:
+                    tag = {**tag, "seen_s_ago": max(0, round((now - before).total_seconds()))}
+                tags[mac] = tag
 
         last_seen: dict[str, datetime | None] = {}
         for mac, tag in tags.items():
@@ -128,6 +143,7 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
             if old and old.started and abs(started - old.started) <= SEEN_JITTER:
                 started = old.started
 
+        self._since = listing.get("since", "")
         problems = {
             p["mac"].upper(): list(p.get("problems", []))
             for p in health.get("problems", [])
