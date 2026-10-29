@@ -164,6 +164,9 @@ class OpenEslTagEntity(CoordinatorEntity[OpenEslCoordinator]):
         dev = self.device_entry and devices.async_get(self.device_entry.id)
         if dev and self.mac in self.source.data.tags:
             fw, model = fw_version(self.tag.get("fw")), tag_model(self.tag)
-            if (fw, model) != (dev.sw_version, dev.model):
-                devices.async_update_device(dev.id, sw_version=fw, model=model)
+            # Under the AP that heard it last
+            ap = devices.async_get_device(identifiers={ap_identifier(self.source)})
+            via = ap.id if ap else dev.via_device_id
+            if (fw, model, via) != (dev.sw_version, dev.model, dev.via_device_id):
+                devices.async_update_device(dev.id, sw_version=fw, model=model, via_device_id=via)
         super()._handle_coordinator_update()

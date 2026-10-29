@@ -6,6 +6,8 @@ minute for the sensors, PUT /api/tags and /api/tags/{mac}/image for the actions.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from homeassistant.const import CONF_HOST, CONF_TOKEN, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
@@ -14,7 +16,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
 from .api import OpenEslApi
-from .const import DOMAIN
+from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import OpenEslConfigEntry, OpenEslCoordinator, coordinators
 from .services import async_setup_services
 
@@ -49,7 +51,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
 
 
 async def _reload(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
-    await hass.config_entries.async_reload(entry.entry_id)
+    # Only for a new interval: a new token or address (reauth, reconfigure) reloads already
+    interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    coordinator = coordinators(hass).get(entry.entry_id)
+    if coordinator and coordinator.update_interval != timedelta(seconds=interval):
+        await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> bool:

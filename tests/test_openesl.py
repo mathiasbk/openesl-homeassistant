@@ -356,6 +356,19 @@ async def test_tag_on_two_aps(hass: HomeAssistant, ap, entry, caplog, entity_reg
     assert entry2.state is ConfigEntryState.LOADED
     assert hass.states.get("sensor.tag_01234567_signal").state == "-40"
     assert hass.states.get("sensor.openesl_9f00_tags").state == "1"
+    # The device hangs under the AP that heard it last, from its next poll
+    ap.clear_requests()
+    ap.get(f"{URL}/api/tags", json=TAGS)
+    ap.get(f"{URL}/api/health", json=HEALTH)
+    ap.get(f"{URL}/api/wifi", json=WIFI)
+    ap.get(f"{URL2}/api/tags", json={"ap": AP, "tags": [tag(MAC1, seen_s_ago=5, rssi=-41)]})
+    ap.get(f"{URL2}/api/health", json={**HEALTH, "problems": [], "with_problems": 0})
+    ap.get(f"{URL2}/api/wifi", json={**WIFI, "hostname": "openesl-9f00"})
+    await hass.services.async_call(DOMAIN, "refresh", {}, blocking=True)
+    await hass.async_block_till_done()
+    devices = dr.async_get(hass)
+    ap2 = devices.async_get_device(identifiers={(DOMAIN, "openesl-9f00")})
+    assert devices.async_get_device(identifiers={(DOMAIN, MAC1)}).via_device_id == ap2.id
 
     ap.put(f"{URL2}/api/tags", json={"tags": [{"mac": MAC1, "content_id": 1, "changed": True, "pending": True}]})
     await hass.services.async_call(DOMAIN, "send", {"mac": MAC1, "layout": "text", "fields": ["Hei"]}, blocking=True)
@@ -365,7 +378,7 @@ async def test_tag_on_two_aps(hass: HomeAssistant, ap, entry, caplog, entity_reg
     # The first AP goes: the tag's entities follow the other one
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
-    assert hass.states.get("sensor.tag_01234567_signal").state == "-40"
+    assert hass.states.get("sensor.tag_01234567_signal").state == "-41"
     assert entity_registry.async_get("sensor.tag_01234567_signal").config_entry_id == entry2.entry_id
 
 
@@ -450,3 +463,37 @@ async def test_device_info_follows(hass: HomeAssistant, aioclient_mock, entry, f
     assert devices.async_get_device(identifiers={(DOMAIN, MAC1)}).sw_version == "0.9.0"
     assert devices.async_get_device(identifiers={(DOMAIN, "openesl-1a2b")}).sw_version == "0.9.0"
     assert hass.states.get("sensor.openesl_1a2b_wifi_signal").state == "-70"
+
+
+async def test_send_connection_lost_after_a_batch(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    calls = []
+
+    async def put(method, url, data):
+        from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMockResponse
+
+        calls.append(data)
+        if len(calls) == 1:
+            return AiohttpClientMockResponse(method, url, json={"tags": [{"mac": r["mac"], "content_id": 1, "changed": True, "pending": True} for r in data["tags"]]})
+        raise TimeoutError
+
+    ap.put(f"{URL}/api/tags", side_effect=put)
+    with pytest.raises(HomeAssistantError, match="first 50 tags"):
+        await hass.services.async_call(
+            DOMAIN, "send", {"mac": [f"{i:016X}" for i in range(1, 80)], "layout": "text", "fields": ["Hei"]}, blocking=True
+        )
+
+
+async def test_reauth_reloads_once(hass: HomeAssistant, ap, entry) -> None:
+    """A new token reloads the entry once (the options listener leaves it alone)."""
+    from unittest.mock import patch
+
+    await _setup(hass, entry)
+    result = await entry.start_reauth_flow(hass)
+    real = hass.config_entries.async_reload
+    with patch.object(hass.config_entries, "async_reload", side_effect=real) as reload:
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {"token": "new-token"})
+        await hass.async_block_till_done()
+    assert result["reason"] == "reauth_successful"
+    assert reload.call_count == 1
+    assert entry.state is ConfigEntryState.LOADED

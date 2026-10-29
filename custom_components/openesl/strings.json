@@ -132,7 +132,7 @@
     "which_ap": { "message": "No access point lists the tag {mac} yet: choose which one under Access point." },
     "no_tags": { "message": "Choose at least one tag." },
     "ap_refused": { "message": "The access point refused it ({status}): {message}" },
-    "ap_refused_partly": { "message": "The access point refused it ({status}): {message}. The first {done} tags got the content before that." },
+    "failed_partly": { "message": "It failed ({error}). The first {done} tags got the content before that." },
     "auth": { "message": "The access point no longer takes the API token." },
     "cannot_connect": { "message": "No answer from the access point: {error}" },
     "path_not_allowed": { "message": "Home Assistant may not read {path}: add its folder to allowlist_external_dirs." },

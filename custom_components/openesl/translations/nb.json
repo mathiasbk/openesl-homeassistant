@@ -219,8 +219,8 @@
     "cannot_read": {
       "message": "Kunne ikke lese {path}: {error}"
     },
-    "ap_refused_partly": {
-      "message": "Aksesspunktet avviste det ({status}): {message}. De første {done} taggene fikk innholdet før det."
+    "failed_partly": {
+      "message": "Det feilet ({error}). De første {done} taggene fikk innholdet før det."
     }
   },
   "options": {
