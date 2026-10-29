@@ -1,0 +1,220 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "OpenESL-aksesspunkt",
+        "description": "Adressen til AP-en på nettverket ditt og API-tokenet (settes på AP-ens oppsettside).",
+        "data": {
+          "host": "Vert",
+          "token": "API-token"
+        },
+        "data_description": {
+          "host": "Navnet til AP-en, `openesl-xxxx.local` på en AP satt opp etter 0.6.0 (`openesl.local` før), eller IP-adressen.",
+          "token": "Tokenet fra AP-ens oppsettside (`/setup`)."
+        }
+      },
+      "zeroconf_confirm": {
+        "title": "Fant et OpenESL-aksesspunkt",
+        "description": "Legge til aksesspunktet {name} på {host}? API-tokenet står på AP-ens oppsettside.",
+        "data": {
+          "token": "API-token"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Nytt API-token",
+        "description": "Aksesspunktet {name} godtar ikke tokenet lenger. Skriv inn det den har nå.",
+        "data": {
+          "token": "API-token"
+        }
+      },
+      "reconfigure": {
+        "title": "Endre adressen",
+        "data": {
+          "host": "Vert"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Ingen svar fra et OpenESL-aksesspunkt på den adressen.",
+      "invalid_auth": "Feil API-token.",
+      "invalid_host": "Ikke et vertsnavn eller en IP-adresse.",
+      "locked": "AP-en avviser alle forespørsler i 60 s etter fem feil token. Vent et minutt og prøv igjen.",
+      "wrong_ap": "Den adressen er et annet aksesspunkt.",
+      "unknown": "Uventet feil."
+    },
+    "abort": {
+      "already_configured": "Dette aksesspunktet er allerede satt opp.",
+      "not_openesl": "Ikke et OpenESL-aksesspunkt.",
+      "reauth_successful": "Tokenet er oppdatert.",
+      "reconfigure_successful": "Adressen er oppdatert."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery_voltage": {
+        "name": "Batterispenning"
+      },
+      "signal": {
+        "name": "Signal"
+      },
+      "last_seen": {
+        "name": "Sist sjekket inn"
+      },
+      "firmware": {
+        "name": "Fastvare"
+      },
+      "poll_interval": {
+        "name": "Pollintervall"
+      },
+      "lost_polls": {
+        "name": "Tapte poll"
+      },
+      "tags": {
+        "name": "Tagger"
+      },
+      "tags_with_problems": {
+        "name": "Tagger med problemer"
+      },
+      "started": {
+        "name": "Startet"
+      },
+      "channel": {
+        "name": "Radiokanal"
+      },
+      "scheduled": {
+        "name": "Planlagt innhold"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem",
+        "state_attributes": {
+          "problems": {
+            "name": "Problemer"
+          },
+          "content_error": {
+            "name": "Innholdsfeil"
+          }
+        }
+      },
+      "battery_low": {
+        "name": "Batteri"
+      },
+      "pending": {
+        "name": "Venter på oppdatering"
+      },
+      "radio": {
+        "name": "Radio"
+      }
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Send",
+      "description": "Setter tekst på tagger med en layout: den innebygde `text` (4 linjer) eller `price`, eller en layout i AP-ens layoutfil. Bare innhold som er endret tegnes.",
+      "fields": {
+        "device_id": {
+          "name": "Tagger",
+          "description": "Taggene det skal sendes til."
+        },
+        "mac": {
+          "name": "MAC",
+          "description": "Tagger med 16-sifret MAC i stedet (en tagg AP-en ikke kjenner ennå får det når den dukker opp)."
+        },
+        "layout": {
+          "name": "Layout",
+          "description": "`text`, `price` eller navnet på en layout i AP-ens layoutfil."
+        },
+        "fields": {
+          "name": "Felt",
+          "description": "Teksten, i layoutens feltrekkefølge. Alle feltene tar til sammen omtrent 90 tegn."
+        },
+        "price_highlight": {
+          "name": "Uthev",
+          "description": "Hvitt på svart for prisen (`price`) eller layoutens uthevingselementer."
+        },
+        "frame": {
+          "name": "Ramme",
+          "description": "En svart ramme rundt skjermen (`text`) eller layoutens rammeelementer."
+        },
+        "at": {
+          "name": "Tidspunkt",
+          "description": "Vis det fra dette tidspunktet i stedet for nå (AP-en tar vare på det til da)."
+        },
+        "config_entry_id": {
+          "name": "Aksesspunkt",
+          "description": "Med flere AP-er: den en MAC den ikke lister ennå skal til."
+        }
+      }
+    },
+    "send_image": {
+      "name": "Send bilde",
+      "description": "Viser en PNG på tagger. Den må ha taggens skjermstørrelse: 296 x 128 for 2,9\", 200 x 200 for 1,54\".",
+      "fields": {
+        "device_id": {
+          "name": "Tagger",
+          "description": "Taggene det skal sendes til."
+        },
+        "mac": {
+          "name": "MAC",
+          "description": "Tagger med 16-sifret MAC i stedet."
+        },
+        "path": {
+          "name": "Fil",
+          "description": "PNG-filen på Home Assistant-maskinen, i en mappe i `allowlist_external_dirs` (eller under /config/www)."
+        },
+        "dither": {
+          "name": "Dithering",
+          "description": "Bland svart og hvitt for gråtoner (bilder) i stedet for å ta nærmeste."
+        },
+        "config_entry_id": {
+          "name": "Aksesspunkt",
+          "description": "Med flere AP-er: den en MAC den ikke lister ennå skal til."
+        }
+      }
+    },
+    "refresh": {
+      "name": "Oppdater",
+      "description": "Leser taggene fra AP-en nå i stedet for neste minutt.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Aksesspunkt",
+          "description": "Bare denne AP-en."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "Ingen OpenESL-aksesspunkt er satt opp og kjører."
+    },
+    "not_a_tag": {
+      "message": "{target} er ikke en OpenESL-tagg."
+    },
+    "unknown_ap": {
+      "message": "Det aksesspunktet er ikke satt opp eller kjører ikke."
+    },
+    "which_ap": {
+      "message": "Ingen aksesspunkt lister taggen {mac} ennå: velg hvilket under Aksesspunkt."
+    },
+    "no_tags": {
+      "message": "Velg minst én tagg."
+    },
+    "ap_refused": {
+      "message": "Aksesspunktet avviste det ({status}): {message}"
+    },
+    "auth": {
+      "message": "Aksesspunktet godtar ikke API-tokenet lenger."
+    },
+    "cannot_connect": {
+      "message": "Ingen svar fra aksesspunktet: {error}"
+    },
+    "path_not_allowed": {
+      "message": "Home Assistant får ikke lese {path}: legg mappen til i allowlist_external_dirs."
+    },
+    "cannot_read": {
+      "message": "Kunne ikke lese {path}: {error}"
+    }
+  }
+}
