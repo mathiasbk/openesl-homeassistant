@@ -116,6 +116,10 @@ The tests are in `tests/` (Home Assistant's test harness, Python 3.13): `pip ins
 
 The icon is in `custom_components/openesl/brand/` (the tag from the OpenESL web page). Home Assistant 2026.3 and newer shows it; older versions show a placeholder.
 
+## Releases
+
+A release is made by itself when `version` in `custom_components/openesl/manifest.json` changes on `main` (`.github/workflows/release.yml`). Its text is that version's section in [CHANGELOG.md](CHANGELOG.md), which must say how to upgrade (CI checks it). So a release is one pull request: the new version in the manifest and its section in the changelog.
+
 ## License
 
 MIT, like OpenESL.
