@@ -16,6 +16,7 @@ from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.openesl.const import DOMAIN
+from custom_components.openesl.entity import tag_model
 
 from conftest import AP, HEALTH, HOST, MAC1, MAC2, TAGS, TOKEN, URL, WIFI, tag
 
@@ -560,3 +561,12 @@ async def test_reauth_reloads_once(hass: HomeAssistant, ap, entry) -> None:
     assert result["reason"] == "reauth_successful"
     assert reload.call_count == 1
     assert entry.state is ConfigEntryState.LOADED
+
+
+def test_tag_model_names() -> None:
+    """The device model as people read it, with the experimental 2.9" red marked."""
+    assert tag_model({"model": "2.9"}) == '2.9" tag'
+    assert tag_model({"model": "1.54"}) == '1.54" tag'
+    assert tag_model({"model": "2.9-bwr"}) == '2.9" red tag (experimental)'
+    assert tag_model({"model": None}) == "Tag"
+    assert tag_model({}) == "Tag"
