@@ -32,9 +32,19 @@ def tag_name(mac: str) -> str:
     return f"Tag {mac[4:12]}"
 
 
+# Tag models whose API name is not just their size (shared/models.json "short" in openESL),
+# and those not tried on a real tag yet ("experimental")
+MODEL_NAMES = {"2.9-bwr": '2.9" red'}
+EXPERIMENTAL_MODELS = {"2.9-bwr"}
+
+
 def tag_model(tag: dict[str, Any]) -> str:
+    """'2.9" tag', '2.9" red tag (experimental)', or 'Tag' before the tag has polled."""
     model = tag.get("model")
-    return f'{model}" tag' if model else "Tag"
+    if not model:
+        return "Tag"
+    name = MODEL_NAMES.get(model, f'{model}"')
+    return f"{name} tag" + (" (experimental)" if model in EXPERIMENTAL_MODELS else "")
 
 
 def ap_identifier(coordinator: OpenEslCoordinator) -> tuple[str, str]:

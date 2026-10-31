@@ -20,7 +20,7 @@ A layout says where each field goes on the screen and in which font. The fields 
 - **`price`** is built in: a product name, the price, and a small line under it (`price_highlight: true` makes the price stand out).
 - **Every other layout** is made in the [label designer](https://github.com/mathiasbk/openESL/wiki/Label-designer) and sent to the AP from there. The designer's **template library** has ready-made layouts for Home Assistant, such as `meeting-room`, `bin-collection`, `weather` and `room-climate`, which the [examples](Home#examples) use. Open the designer for the tag's model, press **+ From template**, pick one and press **Send to your AP**. See [Label templates](https://github.com/mathiasbk/openESL/wiki/Label-templates) in the OpenESL wiki.
 
-A layout is made for one tag model (2.9" or 1.54"). Send it to the AP for each model you use it on.
+A layout is made for one tag model (2.9", 1.54", or the experimental 2.9" red). Send it to the AP for each model you use it on.
 
 ## Fields from templates
 
@@ -63,4 +63,4 @@ data:
 
 ## Pictures
 
-`openesl.send_image` shows a PNG of exactly the tag's screen size (296 x 128 for the 2.9", 200 x 200 for the 1.54"). See the [README](https://github.com/mathiasbk/openesl-homeassistant/blob/main/README.md#actions).
+`openesl.send_image` shows a PNG of exactly the tag's screen size (296 x 128 for the 2.9" and the experimental 2.9" red, 200 x 200 for the 1.54"). See the [README](https://github.com/mathiasbk/openesl-homeassistant/blob/main/README.md#actions).

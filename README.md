@@ -92,7 +92,7 @@ Rounding the temperature keeps the text the same when little has changed, so the
 
 ### `openesl.send_image`
 
-A PNG of exactly the tag's screen size (296 x 128 for the 2.9", 200 x 200 for the 1.54"), as `PUT /api/tags/{mac}/image`; `dither: true` for photos. The file must be in a folder Home Assistant may read: `/config/www` is, others go in `allowlist_external_dirs`.
+A PNG of exactly the tag's screen size (296 x 128 for the 2.9" and the experimental 2.9" red, 200 x 200 for the 1.54"), as `PUT /api/tags/{mac}/image`; `dither: true` for photos. The file must be in a folder Home Assistant may read: `/config/www` is, others go in `allowlist_external_dirs`.
 
 ```yaml
 action: openesl.send_image
