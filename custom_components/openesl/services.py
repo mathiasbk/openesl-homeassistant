@@ -181,11 +181,18 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> dict[str, list[str]]:
     return out
 
 
-def _error(err: OpenEslError, done: int = 0, by_name: bool = False) -> HomeAssistantError:
+def _error(
+    err: OpenEslError, done: int = 0, by_name: bool = False, ap: str = ""
+) -> HomeAssistantError:
     if by_name and isinstance(err, OpenEslApiError) and OLD_AP_FIELDS in err.message:
-        # An AP with 0.9.2 or older refuses every batch with fields by name
+        # An AP with 0.9.2 or older refuses every batch with fields by name; with several
+        # APs in one call, the tags on the APs before it already have the content
         return HomeAssistantError(
-            translation_domain=DOMAIN, translation_key="fields_by_name_unsupported"
+            translation_domain=DOMAIN,
+            translation_key="fields_by_name_unsupported_partly"
+            if done
+            else "fields_by_name_unsupported",
+            translation_placeholders={"ap": ap, "done": str(done)},
         )
     if done:
         # A later batch of 50 failed: the ones before it are on the AP
@@ -240,7 +247,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
                     results += await coordinator.api.set_tags(rows)
             except OpenEslError as err:
                 raise _error(
-                    err, len(results), isinstance(content["fields"], dict)
+                    err, len(results), isinstance(content["fields"], dict), entry.title
                 ) from err
             finally:
                 await coordinator.async_request_refresh()

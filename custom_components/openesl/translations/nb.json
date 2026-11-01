@@ -211,7 +211,10 @@
       "message": "Aksesspunktet avviste det ({status}): {message}"
     },
     "fields_by_name_unsupported": {
-      "message": "Dette aksesspunktet tar bare feltene som en liste. Felt etter navn krever openESL AP-fastvare nyere enn 0.9.2: oppdater AP-en, eller send feltene som en liste i layoutens rekkefølge."
+      "message": "Aksesspunktet {ap} tar bare feltene som en liste. Felt etter navn krever openESL AP-fastvare nyere enn 0.9.2: oppdater AP-en, eller send feltene som en liste i layoutens rekkefølge."
+    },
+    "fields_by_name_unsupported_partly": {
+      "message": "Aksesspunktet {ap} tar bare feltene som en liste: felt etter navn krever openESL AP-fastvare nyere enn 0.9.2. De første {done} taggene, på andre aksesspunkter, fikk innholdet før det."
     },
     "auth": {
       "message": "Aksesspunktet godtar ikke API-tokenet lenger."

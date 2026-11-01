@@ -451,6 +451,7 @@ async def test_send_fields_by_name_old_ap(hass: HomeAssistant, ap, entry) -> Non
         )
     assert err.value.translation_key == "fields_by_name_unsupported"
     assert "newer than 0.9.2" in str(err.value)
+    assert entry.title in str(err.value)
 
 
 async def test_send_list_old_ap_message_kept(hass: HomeAssistant, ap, entry) -> None:
@@ -619,6 +620,31 @@ async def test_send_refused_after_a_batch(hass: HomeAssistant, aioclient_mock, e
         await hass.services.async_call(
             DOMAIN, "send", {"mac": [f"{i:016X}" for i in range(1, 80)], "layout": "text", "fields": ["Hei"]}, blocking=True
         )
+
+
+async def test_send_fields_by_name_old_ap_after_a_batch(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    """With several APs in one call, an older one after a newer one: say how many got it."""
+    aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    await _setup(hass, entry)
+    calls = []
+
+    async def put(method, url, data):
+        from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMockResponse
+
+        calls.append(data)
+        if len(calls) == 1:
+            return AiohttpClientMockResponse(method, url, json={"tags": [{"mac": r["mac"], "content_id": 1, "changed": True, "pending": True} for r in data["tags"]]})
+        return AiohttpClientMockResponse(method, url, status=422, json={"error": "fields must be an array of strings", "index": 0})
+
+    aioclient_mock.put(f"{URL}/api/tags", side_effect=put)
+    with pytest.raises(HomeAssistantError) as err:
+        await hass.services.async_call(
+            DOMAIN, "send", {"mac": [f"{i:016X}" for i in range(1, 80)], "layout": "text", "fields": {"line1": "Hei"}}, blocking=True
+        )
+    assert err.value.translation_key == "fields_by_name_unsupported_partly"
+    assert "first 50 tags" in str(err.value) and "newer than 0.9.2" in str(err.value)
 
 
 async def test_device_info_follows(hass: HomeAssistant, aioclient_mock, entry, freezer: FrozenDateTimeFactory) -> None:
