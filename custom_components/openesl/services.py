@@ -59,6 +59,17 @@ def _field(value: Any) -> str:
     return "" if value is None else str(value)
 
 
+# The fields as a list in the layout's order, or (AP firmware after 0.9.2) by field name.
+# A mapping is tried first: cv.ensure_list would wrap it in a list.
+FIELDS = vol.Any(
+    vol.Schema({cv.string: _field}),
+    vol.All(cv.ensure_list, [_field]),
+)
+
+# What an AP with 0.9.2 or older says to fields as a mapping
+OLD_AP_FIELDS = "fields must be an array of strings"
+
+
 TARGET = {
     vol.Optional(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [cv.string]),
     vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
@@ -70,7 +81,7 @@ SEND_SCHEMA = vol.Schema(
     {
         **TARGET,
         vol.Required(ATTR_LAYOUT): cv.string,
-        vol.Required(ATTR_FIELDS): vol.All(cv.ensure_list, [_field]),
+        vol.Required(ATTR_FIELDS): FIELDS,
         vol.Optional(ATTR_PRICE_HIGHLIGHT): cv.boolean,
         vol.Optional(ATTR_FRAME): cv.boolean,
         vol.Optional(ATTR_AT): cv.datetime,
@@ -170,7 +181,12 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> dict[str, list[str]]:
     return out
 
 
-def _error(err: OpenEslError, done: int = 0) -> HomeAssistantError:
+def _error(err: OpenEslError, done: int = 0, by_name: bool = False) -> HomeAssistantError:
+    if by_name and isinstance(err, OpenEslApiError) and OLD_AP_FIELDS in err.message:
+        # An AP with 0.9.2 or older refuses every batch with fields by name
+        return HomeAssistantError(
+            translation_domain=DOMAIN, translation_key="fields_by_name_unsupported"
+        )
     if done:
         # A later batch of 50 failed: the ones before it are on the AP
         return HomeAssistantError(
@@ -223,7 +239,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
                     rows = [{"mac": m, **content} for m in macs[i : i + BATCH_MAX]]
                     results += await coordinator.api.set_tags(rows)
             except OpenEslError as err:
-                raise _error(err, len(results)) from err
+                raise _error(
+                    err, len(results), isinstance(content["fields"], dict)
+                ) from err
             finally:
                 await coordinator.async_request_refresh()
         return {"tags": results}

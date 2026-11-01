@@ -428,6 +428,40 @@ async def test_send_refused(hass: HomeAssistant, ap, entry) -> None:
         await hass.services.async_call(DOMAIN, "send", {"mac": MAC1, "layout": "text", "fields": ["x" * 200]}, blocking=True)
 
 
+async def test_send_fields_by_name(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    ap.put(f"{URL}/api/tags", json={"tags": [{"mac": MAC1, "content_id": 2, "changed": True, "pending": True}]})
+    await hass.services.async_call(
+        DOMAIN, "send",
+        {"mac": MAC1, "layout": "price", "fields": {"name": "Butter", "price": 44.9, "subtitle": None}},
+        blocking=True,
+    )
+    (body, _), = _sent(ap, "PUT", "/api/tags")
+    # Passed on as a mapping, numbers as text
+    assert body["tags"][0]["fields"] == {"name": "Butter", "price": "44.9", "subtitle": ""}
+
+
+async def test_send_fields_by_name_old_ap(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    # What an AP with 0.9.2 or older answers to fields as a mapping
+    ap.put(f"{URL}/api/tags", status=422, json={"error": "fields must be an array of strings", "index": 0})
+    with pytest.raises(HomeAssistantError) as err:
+        await hass.services.async_call(
+            DOMAIN, "send", {"mac": MAC1, "layout": "price", "fields": {"price": "44.90"}}, blocking=True
+        )
+    assert err.value.translation_key == "fields_by_name_unsupported"
+    assert "newer than 0.9.2" in str(err.value)
+
+
+async def test_send_list_old_ap_message_kept(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    # The same message to a list is the AP's own (a field that is not text): passed on as it is
+    ap.put(f"{URL}/api/tags", status=422, json={"error": "fields must be an array of strings", "index": 0})
+    with pytest.raises(HomeAssistantError) as err:
+        await hass.services.async_call(DOMAIN, "send", {"mac": MAC1, "layout": "text", "fields": ["Hei"]}, blocking=True)
+    assert err.value.translation_key == "ap_refused"
+
+
 async def test_send_needs_a_tag(hass: HomeAssistant, ap, entry) -> None:
     await _setup(hass, entry)
     with pytest.raises(ServiceValidationError):
