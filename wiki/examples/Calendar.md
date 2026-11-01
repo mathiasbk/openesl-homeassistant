@@ -74,7 +74,7 @@ actions:
           {%- else -%}
             {%- set when = 'All day' -%}
           {%- endif -%}
-          {%- set where = ('  ' ~ e.location[:8]) if e.location else '' -%}
+          {%- set where = ('  ' ~ e.get('location', '')[:8]) if e.get('location') else '' -%}
           {%- set ns.out = ns.out + [e.summary[:16], when ~ where] -%}
         {%- endfor -%}
         {%- if events | count > 2 -%}
@@ -86,9 +86,9 @@ actions:
         {{ [now().day | string, weekdays[now().weekday()] ~ ' ' ~ months[now().month - 1]] + ns.out }}
 ```
 
-The designer's preview of the template shows the look. With two events and more to come, the fields are, for example, `1`, `Sun November`, `Dentist`, `09:00-10:00  Main St`, `Football training` and `18:00-19:30  +1 more`.
+The designer's preview of the template shows the look. With two events and more to come, the fields are, for example, `1`, `Sun November`, `Dentist`, `09:00-10:00  Main St`, `Football match` and `18:00-19:30  +1 more`.
 
-Events that are over drop off the list, so each start and end trigger moves it on. All-day events come first. When there are more than two events, the second one's place gives way to "+1 more". Titles are cut to 16 characters and places to 8, so that all six fields stay inside the [text limit](Sending-text#the-text-limit) of about 90 characters.
+Events that are over drop off the list, so each start and end trigger moves it on. All-day events come first. When there are more than two events, the second one's place gives way to "+1 more". Titles are cut to 16 characters and places to 8, so that all six fields stay inside the [text limit](Sending-text#the-text-limit) of about 90 characters. If you translate `weekdays` and `months`, keep the weekday and month together at 13 characters or less (for example `ons september`), or cut the titles shorter.
 
 ## Today's appointments (layout `text`)
 
@@ -114,7 +114,7 @@ The tag shows, for example:
 Today 30.10
 All day Birthday party
 08:30 Dentist
-18:00 Football training
+18:00 Football match
 ```
 
 Titles are cut to 15 characters to stay inside the text limit.
