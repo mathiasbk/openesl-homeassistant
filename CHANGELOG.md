@@ -2,6 +2,16 @@
 
 Each version has its own section. When `version` in `custom_components/openesl/manifest.json` changes on `main`, the release workflow tags `v<version>` and makes the GitHub release with that section as its text, so HACS offers it. A section always says how to upgrade.
 
+## 0.3.0
+
+- **Lost radio:** an ESP32-S3 AP that loses contact with its ESP32-C6 radio (on the cable or over WiFi) shows it: the **Radio** entity turns off, and after 30 s a repair says which AP and radio, and what to check. It goes away by itself when the radio is back. Until then the tags that radio serves hear nothing from the AP.
+- **Radio** now also for the C6 on the cable, with the attributes `via`, `lost` and `lost_s`; an AP with several radios over WiFi gets **Radio 1**-**3** too, also for a C6 that joins later.
+- An AP with older firmware sends none of this: nothing changes there.
+
+### Upgrading
+
+Update in HACS and restart Home Assistant; nothing to set up. The repair and the Radio entity for the C6 on the cable need openESL AP firmware with `radio_problems` in `GET /api/health` (the first release after 0.9.2). Order: either first, they work together both ways.
+
 ## 0.2.0
 
 - **Less traffic on the AP:** each update asks the AP for only the tags that changed since the last one (`GET /api/tags?since=`, openESL #270), instead of the whole list. With 200 tags on a 600 s poll interval that is about a fifth of the list every 120 s, and nothing when no tag polled. Tags that did not change keep their states, and their last check-in stays put.

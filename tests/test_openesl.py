@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
@@ -222,6 +223,86 @@ async def test_new_tag_and_steady_last_seen(
     assert hass.states.get("sensor.tag_02079575_battery_voltage").state == "2.95"
     # A tag the AP no longer lists becomes unavailable
     assert hass.states.get("sensor.tag_02066346_signal").state == "unavailable"
+
+
+async def test_radio_lost_and_back(
+    hass: HomeAssistant, aioclient_mock, entry, freezer: FrozenDateTimeFactory
+) -> None:
+    """An S3 AP whose C6 on the cable stops answering: the radio sensor and a repair issue."""
+    freezer.move_to("2026-11-01T08:00:00+00:00")
+    s3 = {**AP, "board": "s3-n16r8-c6", "board_name": "ESP32-S3 + C6 on cable"}
+    lost = {"connected": False, "via": "uart", "lost": True, "lost_s": 45}
+    aioclient_mock.get(f"{URL}/api/tags", json={**TAGS, "ap": {**s3, "radio": lost}})
+    aioclient_mock.get(f"{URL}/api/health", json={
+        **HEALTH, "ok": False, "radio_lost": 1,
+        "radio_problems": [{"radio": 0, "id": "000098880E7177C8", "via": "uart",
+                            "problems": ["radio_lost"], "lost_s": 45}],
+    })
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    await _setup(hass, entry)
+
+    radio = hass.states.get("binary_sensor.openesl_1a2b_radio")
+    assert radio.state == "off"
+    assert radio.attributes["via"] == "uart"
+    assert radio.attributes["lost_s"] == 45
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"radio_lost_{entry.entry_id}_0")
+    assert issue is not None
+    assert issue.translation_key == "radio_lost_uart"
+    assert issue.translation_placeholders == {"ap": "openesl-1a2b", "radio": ""}
+    assert issue.severity == ir.IssueSeverity.ERROR
+
+    # It answers again: the issue goes by itself
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{URL}/api/tags", json={**TAGS, "ap": {
+        **s3, "radio": {"connected": True, "via": "uart", "lost": False, "seen_s": 1, "fw": 257}}})
+    aioclient_mock.get(f"{URL}/api/health", json={**HEALTH, "radio_lost": 0, "radio_problems": []})
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    freezer.tick(120)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get("binary_sensor.openesl_1a2b_radio").state == "on"
+    assert ir.async_get(hass).async_get_issue(DOMAIN, f"radio_lost_{entry.entry_id}_0") is None
+
+
+async def test_several_radios(
+    hass: HomeAssistant, aioclient_mock, entry, freezer: FrozenDateTimeFactory
+) -> None:
+    """Radios over WiFi: one sensor each, also for a C6 that joins later, and which one is lost."""
+    freezer.move_to("2026-11-01T08:00:00+00:00")
+    r0 = {"radio": 0, "id": "0000F0F5BDFFFE01", "channel": 25, "tags": 1, "connected": True,
+          "via": "wifi", "lost": False, "ip": "192.168.3.249", "seen_s": 2, "fw": 1000}
+    link0 = {k: r0[k] for k in ("connected", "via", "lost", "ip", "seen_s", "fw")}
+    aioclient_mock.get(f"{URL}/api/tags", json={**TAGS, "ap": {**AP, "radio": link0, "radios": [r0]}})
+    aioclient_mock.get(f"{URL}/api/health", json={**HEALTH, "radio_lost": 0, "radio_problems": []})
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    await _setup(hass, entry)
+    assert hass.states.get("binary_sensor.openesl_1a2b_radio").attributes["id"] == "0000F0F5BDFFFE01"
+    assert hass.states.get("binary_sensor.openesl_1a2b_radio_1") is None
+
+    # A second C6 took place 1, and has now been gone for a while
+    r1 = {"radio": 1, "id": "0000F0F5BDFFFE02", "channel": 15, "tags": 0, "connected": False,
+          "via": "wifi", "lost": True, "lost_s": 90}
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{URL}/api/tags", json={**TAGS, "ap": {**AP, "radio": link0, "radios": [r0, r1]}})
+    aioclient_mock.get(f"{URL}/api/health", json={
+        **HEALTH, "radio_lost": 1,
+        "radio_problems": [{"radio": 1, "id": r1["id"], "via": "wifi", "problems": ["radio_lost"], "lost_s": 90}],
+    })
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    freezer.tick(120)
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    one = hass.states.get("binary_sensor.openesl_1a2b_radio_1")
+    assert one.state == "off"
+    assert one.attributes["channel"] == 15
+    assert hass.states.get("binary_sensor.openesl_1a2b_radio").state == "on"
+    issue = ir.async_get(hass).async_get_issue(DOMAIN, f"radio_lost_{entry.entry_id}_1")
+    assert issue.translation_key == "radio_lost_wifi"
+    assert issue.translation_placeholders["radio"] == " 1"
+
+    # Unloading the AP takes its issues with it
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    assert ir.async_get(hass).async_get_issue(DOMAIN, f"radio_lost_{entry.entry_id}_1") is None
 
 
 async def test_only_changed_tags(

@@ -109,6 +109,9 @@
       },
       "radio": {
         "name": "Radio"
+      },
+      "radio_n": {
+        "name": "Radio {radio}"
       }
     }
   },
@@ -234,6 +237,16 @@
           "scan_interval": "Hvor ofte taggene leses fra AP-en. Svaret er omtrent 600 byte per tagg, så med mange tagger eller svak WiFi bør det leses sjeldnere. Taggene selv poller AP-en hvert 60. sekund som standard."
         }
       }
+    }
+  },
+  "issues": {
+    "radio_lost_uart": {
+      "title": "{ap}: radio{radio} svarer ikke",
+      "description": "Aksesspunktet {ap} (en ESP32-S3) har ikke fått svar fra radioen, ESP32-C6-en på kabelen, på over 30 sekunder. Til den svarer igjen hører ingen tagger AP-et: innhold og innstillinger venter.\n\nSjekk kabelen mellom S3 og C6 (TX, RX og GND) og at C6-en har strøm. Dashbordet på AP-et viser siden når. Dette forsvinner av seg selv når radioen svarer igjen."
+    },
+    "radio_lost_wifi": {
+      "title": "{ap}: radio{radio} svarer ikke",
+      "description": "Aksesspunktet {ap} (en ESP32-S3) har ikke vært koblet til denne radioen, en ESP32-C6 over WiFi, på over 30 sekunder. Til den kobler seg til igjen hører taggene dens ingenting fra AP-et: innhold og innstillinger venter.\n\nSjekk at C6-en har strøm og er på WiFi (`status` i USB-konsollen dens). Dashbordet på AP-et viser siden når. Dette forsvinner av seg selv når radioen er tilbake."
     }
   }
 }
