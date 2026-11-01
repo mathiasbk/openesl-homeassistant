@@ -4,6 +4,8 @@ The OpenESL integration puts the access point (AP) of [OpenESL](https://github.c
 
 **[The wiki](https://github.com/mathiasbk/openesl-homeassistant/wiki)** is the step-by-step guide, with automations ready to copy: today's calendar, a meeting room sign, bin collection, weather, room climate and low battery alerts. This README is the reference.
 
+![Today's calendar on a 2.9" tag](https://raw.githubusercontent.com/mathiasbk/openesl-homeassistant/main/images/calendar-tag.jpg)
+
 Without the integration, a `rest_command` does the same for text: [home-assistant.md](https://github.com/mathiasbk/openESL/blob/master/docs/home-assistant.md).
 
 ## Install

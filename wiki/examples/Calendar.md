@@ -12,6 +12,8 @@ Put your calendars in the `calendars` list at the top of each automation, and ad
 
 ## Today's agenda (layout `calendar`)
 
+![Today's calendar on a 2.9" tag](https://raw.githubusercontent.com/mathiasbk/openesl-homeassistant/main/images/calendar-tag.jpg)
+
 The date in a column on the left and the next two events of the day on the right, each with its title large, its time and place under it, and a bar before it. It is inspired by the look of [Calendar Card Pro](https://github.com/alexpfau/calendar-card-pro).
 
 The layout comes from the designer's template library: in the designer, pick the tag's model, then **+ From template → Home → Calendar**, and **Send to your AP**. The template is in the library from the openESL release after 0.9.2.
