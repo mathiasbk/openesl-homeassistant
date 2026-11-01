@@ -52,7 +52,7 @@ A tag the AP no longer lists turns unavailable; delete its device from its page 
 
 ### `openesl.send`
 
-Text in a layout: the built-in `text` (four lines) or `price`, or a layout in the AP's layout file (the designer's templates, such as `3d-printer`). The same as `PUT /api/tags`, so the AP's rules hold: the fields share about 90 characters, a layout must be in the file for the tag's model, and the same content again does not redraw the tag.
+Text in a layout: the built-in `text` (four lines) or `price`, or a layout in the AP's layout file (the designer's templates, such as `3d-printer`). The same as `PUT /api/tags`, so the AP's rules hold: the fields share about 90 characters (about 250 on AP firmware newer than 0.9.2), a layout must be in the file for the tag's model, and the same content again does not redraw the tag.
 
 ```yaml
 action: openesl.send
@@ -69,10 +69,24 @@ data:
 |---|---|
 | `device_id` | one or more tags (devices); or `mac` with 16-digit MACs, which also works for a tag the AP does not know yet |
 | `layout` | `text`, `price` or a layout's name |
-| `fields` | the text, in the layout's field order; numbers are sent as text |
+| `fields` | the text: a list in the layout's field order, or a mapping by field name (see below); numbers are sent as text |
 | `price_highlight`, `frame` | as in the API |
 | `at` | a time to show it from instead of now (the AP keeps it; it needs to know the time) |
 | `config_entry_id` | with more than one AP: where a MAC no AP lists yet goes |
+
+With AP firmware newer than 0.9.2, `fields` can name the fields instead. The automation then keeps working when the layout's field order changes, or when the tag gets another layout with the same field names. A field left out is empty. The built-in layouts' names are `line1`-`line4` for `text` and `name`, `price`, `subtitle` for `price`; the designer shows a layout's names.
+
+```yaml
+action: openesl.send
+data:
+  device_id: 4f0c6a...
+  layout: price
+  fields:
+    name: "Butter"
+    price: "{{ states('input_number.butter_price') }}"
+```
+
+A name the layout does not have makes the AP refuse the content, with the name in the message. An AP with 0.9.2 or older takes a list only: the action then fails with a message that says so, and the tags keep what they show.
 
 Many tags in one call go to the AP in batches of 50. The action answers with the AP's reply per tag (`content_id`, `changed`, `pending`), for `response_variable`. When the AP refuses the content (text too long, an unknown layout) the action fails with the AP's message, and the tags keep what they show. The AP takes or refuses each batch of 50 as a whole, so with more than 50 tags the batches before the refused one have already gone; the message says how many tags got the content.
 

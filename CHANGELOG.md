@@ -2,6 +2,15 @@
 
 Each version has its own section. When `version` in `custom_components/openesl/manifest.json` changes on `main`, the release workflow tags `v<version>` and makes the GitHub release with that section as its text, so HACS offers it. A section always says how to upgrade.
 
+## 0.4.0
+
+- **Fields by name:** `fields` in `openesl.send` can be a mapping by the layout's field names (`price: "44.90"`) as well as a list in the layout's order (openESL #182). An automation then keeps showing the right text in the right place when the layout's field order changes or the tag gets another layout with the same names. A field left out is empty.
+- An AP with 0.9.2 or older takes a list only. Fields by name to such an AP fail with a message that says which AP firmware is needed, instead of the AP's bare `422`. Lists work as before on every AP.
+
+### Upgrading
+
+Update in HACS and restart Home Assistant; nothing to set up, and automations with a list keep working. Fields by name need openESL AP firmware newer than 0.9.2 (the first release after 0.9.2). Order: the AP first, then the integration, and only then change automations to fields by name.
+
 ## 0.3.0
 
 - **Lost radio:** an ESP32-S3 AP that loses contact with its ESP32-C6 radio (on the cable or over WiFi) shows it: the **Radio** entity turns off, and after 30 s a repair says which AP and radio, and what to check. It goes away by itself when the radio is back. Until then the tags that radio serves hear nothing from the AP.
