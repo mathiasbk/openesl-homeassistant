@@ -88,7 +88,18 @@
       },
       "battery_low": { "name": "Battery" },
       "pending": { "name": "Update pending" },
-      "radio": { "name": "Radio" }
+      "radio": { "name": "Radio" },
+      "radio_n": { "name": "Radio {radio}" }
+    }
+  },
+  "issues": {
+    "radio_lost_uart": {
+      "title": "{ap}: radio{radio} is not answering",
+      "description": "The access point {ap} (an ESP32-S3) has had no answer from its radio, the ESP32-C6 on the cable, for more than 30 seconds. Until it answers again no tag hears the AP: content and settings wait.\n\nCheck the cable between the S3 and the C6 (TX, RX and GND) and that the C6 has power. The AP's dashboard shows since when. This goes away by itself when the radio answers again."
+    },
+    "radio_lost_wifi": {
+      "title": "{ap}: radio{radio} is not answering",
+      "description": "The access point {ap} (an ESP32-S3) has had no connection to this radio, an ESP32-C6 over WiFi, for more than 30 seconds. Until it connects again its tags hear nothing from the AP: content and settings wait.\n\nCheck that the C6 has power and is on the WiFi (`status` in its USB console). The AP's dashboard shows since when. This goes away by itself when the radio is back."
     }
   },
   "services": {

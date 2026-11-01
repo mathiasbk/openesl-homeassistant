@@ -42,6 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     @callback
     def forget() -> None:
         coordinators(hass).pop(entry.entry_id, None)
+        coordinator.clear_radio_issues()
 
     entry.async_on_unload(forget)
     # A new update interval in the options

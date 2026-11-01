@@ -16,6 +16,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -76,6 +77,11 @@ def tag_source(hass: HomeAssistant, mac: str) -> OpenEslCoordinator | None:
     return best
 
 
+def radio_issue_id(entry_id: str, radio: int) -> str:
+    """The repair issue for a lost radio of one AP."""
+    return f"radio_lost_{entry_id}_{radio}"
+
+
 class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
     """The AP and its tags."""
 
@@ -98,6 +104,8 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
         self.api = api
         # The AP's "since" from the last read that went through; "" gets every tag
         self._since = ""
+        # Radios with a repair issue open (radio_problems in GET /api/health)
+        self._lost_radios: set[int] = set()
 
     async def _async_update_data(self) -> OpenEslData:
         try:
@@ -144,6 +152,7 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
                 started = old.started
 
         self._since = listing.get("since", "")
+        self._radio_issues(health.get("radio_problems"), ap)
         problems = {
             p["mac"].upper(): list(p.get("problems", []))
             for p in health.get("problems", [])
@@ -157,6 +166,42 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
             started=started,
             wifi=wifi,
         )
+
+    def _radio_issues(self, lost: list[dict[str, Any]] | None, ap: dict[str, Any]) -> None:
+        """A repair issue for each radio (the C6 of an S3 AP) the AP has lost contact with.
+
+        GET /api/health lists them under radio_problems (openESL firmware after 0.9.2): a
+        radio that has not answered for 30 s. The issue goes away by itself when it is back.
+        Firmware that does not send radio_problems leaves the issues as they are (none).
+        """
+        if lost is None:
+            return
+        entry = self.config_entry
+        now = {r.get("radio", 0): r for r in lost}
+        several = len([r for r in ap.get("radios") or [] if r.get("id")]) > 1
+        for radio, r in now.items():
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                radio_issue_id(entry.entry_id, radio),
+                is_fixable=False,
+                is_persistent=False,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key="radio_lost_uart" if r.get("via") == "uart" else "radio_lost_wifi",
+                translation_placeholders={
+                    "ap": entry.title,
+                    "radio": f" {radio}" if several or radio else "",
+                },
+            )
+        for radio in self._lost_radios - now.keys():
+            ir.async_delete_issue(self.hass, DOMAIN, radio_issue_id(entry.entry_id, radio))
+        self._lost_radios = set(now)
+
+    def clear_radio_issues(self) -> None:
+        """The AP is unloaded: its repair issues go with it."""
+        for radio in self._lost_radios:
+            ir.async_delete_issue(self.hass, DOMAIN, radio_issue_id(self.config_entry.entry_id, radio))
+        self._lost_radios = set()
 
     def async_update_listeners(self) -> None:
         super().async_update_listeners()
