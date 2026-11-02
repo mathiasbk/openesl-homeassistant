@@ -6,6 +6,7 @@ Each version has its own section. When `version` in `custom_components/openesl/m
 
 - **Fields by name:** `fields` in `openesl.send` can be a mapping by the layout's field names (`price: "44.90"`) as well as a list in the layout's order (openESL #182). An automation then keeps showing the right text in the right place when the layout's field order changes or the tag gets another layout with the same names. A field left out is empty.
 - An AP with 0.9.2 or older takes a list only. Fields by name to such an AP fail with a message that says which AP firmware is needed, instead of the AP's bare `422`. Lists work as before on every AP.
+- **Many fields to many tags:** `openesl.send` to 50 or more tags with 14 or more fields no longer gets `413` from the AP: it sends fewer tags per request when the content is large (#18).
 
 ### Upgrading
 

@@ -198,7 +198,7 @@ def _error(
             translation_placeholders={"ap": ap, "done": str(done)},
         )
     if done:
-        # A later batch of 50 failed: the ones before it are on the AP
+        # A later batch failed: the ones before it are on the AP
         return HomeAssistantError(
             translation_domain=DOMAIN,
             translation_key="failed_partly",
