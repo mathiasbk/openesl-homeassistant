@@ -594,6 +594,9 @@ async def test_tag_on_two_aps_second_ap_slower(hass: HomeAssistant, ap, entry) -
     with patch.object(OpenEslCoordinator, "async_config_entry_first_refresh", slow_second):
         await _setup(hass, entry)
     assert hass.states.get("sensor.tag_01234567_signal").state == "-40"
+    devices = dr.async_get(hass)
+    ap2 = devices.async_get_device(identifiers={(DOMAIN, "openesl-9f00")})
+    assert devices.async_get_device(identifiers={(DOMAIN, MAC1)}).via_device_id == ap2.id
 
 
 async def test_legacy_hostname_user_flow(hass: HomeAssistant, aioclient_mock) -> None:

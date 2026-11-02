@@ -39,10 +39,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     coordinators(hass)[entry.entry_id] = coordinator
-    # The first refresh told the other APs' tag entities before this AP was in the list:
-    # tell them again, so a tag this AP heard last shows what it says (and not only from
-    # the next poll)
-    async_dispatcher_send(hass, SIGNAL_UPDATED, entry.entry_id)
 
     @callback
     def forget() -> None:
@@ -53,6 +49,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     # A new update interval in the options
     entry.async_on_unload(entry.add_update_listener(_reload))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # The first refresh told the other APs' tag entities before this AP and its device
+    # were set up: tell them again, so a tag this AP heard last shows what it says and
+    # hangs under it now, not only from the next poll
+    async_dispatcher_send(hass, SIGNAL_UPDATED, entry.entry_id)
     return True
 
 
