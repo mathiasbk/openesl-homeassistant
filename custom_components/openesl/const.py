@@ -14,6 +14,10 @@ LEGACY_HOSTNAME = "openesl"
 
 # PUT /api/tags takes at most 50 rows (RAM on the AP)
 BATCH_MAX = 50
+# ... and a body of at most 1,024 JSON tokens and 24,576 bytes (openESL openapi.yaml): 50 tags
+# with 14 or more fields pass the token limit, so batches are also cut by these (with a margin)
+BODY_MAX_TOKENS = 1024 - 3 - 16
+BODY_MAX_BYTES = 24576 - 64 - 512
 
 ATTR_MAC = "mac"
 ATTR_LAYOUT = "layout"
