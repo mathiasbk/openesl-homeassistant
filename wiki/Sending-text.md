@@ -14,7 +14,7 @@ data:
 
 ## Layouts
 
-A layout says where each field goes on the screen and in which font. The fields are sent in the layout's order.
+A layout says where each field goes on the screen and in which font. The fields are sent in the layout's order, or [by name](#fields-by-name).
 
 - **`text`** is built in: four lines of text, with as many fields as you send (up to four).
 - **`price`** is built in: a product name, the price, and a small line under it (`price_highlight: true` makes the price stand out).
@@ -33,9 +33,21 @@ fields: >-
 
 Home Assistant turns a template that renders a list into a real list. Numbers are sent as text.
 
+## Fields by name
+
+With AP firmware newer than 0.9.2, `fields` can be a mapping from the layout's field names to the text, in place of a list. The automation then keeps working when the field order in the layout changes, or when the tag gets another layout with the same names. A field you leave out is empty.
+
+```yaml
+fields:
+  line1: "Outside"
+  line2: "{{ states('sensor.outdoor_temperature') | float(0) | round(0) }} °C"
+```
+
+The built-in `text` has `line1` to `line4`, and `price` has `name`, `price` and `subtitle`. A layout from the designer has the names shown in the designer. A name the layout does not have makes the AP refuse the content, with the name in the message. An AP with 0.9.2 or older takes a list only, and the action fails with a message that says so: update the AP first.
+
 ## The text limit
 
-All the fields of one tag share 96 bytes (the AP sends them in one radio packet): one byte per field plus the text, so about 90 characters in all. Letters such as æ, ø, å and ° count as one character each. Emoji and other characters outside Latin-1 cannot be shown and become `?`. Empty fields at the end cost nothing. Cut long text in the template, for example `e.summary[:15]`.
+All the fields of one tag share 96 bytes on AP firmware 0.9.2 or older, and 256 bytes on newer AP firmware: one byte per field plus the text, so about 90 (or about 250) characters in all. Letters such as æ, ø, å and ° count as one character each. Emoji and other characters outside Latin-1 cannot be shown and become `?`. Empty fields at the end cost nothing. Cut long text in the template, for example `e.summary[:15]`.
 
 When the text is too long, the AP refuses it, the action fails with the AP's message, and the tag keeps what it shows.
 

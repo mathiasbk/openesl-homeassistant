@@ -134,7 +134,7 @@
         },
         "fields": {
           "name": "Felt",
-          "description": "Teksten, i layoutens feltrekkefølge. Alle feltene tar til sammen omtrent 90 tegn."
+          "description": "Teksten: en liste i layoutens feltrekkefølge, eller etter feltnavn (AP-fastvare nyere enn 0.9.2), som `price: 44.90`. Alle feltene tar til sammen omtrent 90 tegn (omtrent 250 med AP-fastvare nyere enn 0.9.2)."
         },
         "price_highlight": {
           "name": "Uthev",
@@ -209,6 +209,12 @@
     },
     "ap_refused": {
       "message": "Aksesspunktet avviste det ({status}): {message}"
+    },
+    "fields_by_name_unsupported": {
+      "message": "Aksesspunktet {ap} tar bare feltene som en liste. Felt etter navn krever openESL AP-fastvare nyere enn 0.9.2: oppdater AP-en, eller send feltene som en liste i layoutens rekkefølge."
+    },
+    "fields_by_name_unsupported_partly": {
+      "message": "Aksesspunktet {ap} tar bare feltene som en liste: felt etter navn krever openESL AP-fastvare nyere enn 0.9.2. De første {done} taggene, på andre aksesspunkter, fikk innholdet før det."
     },
     "auth": {
       "message": "Aksesspunktet godtar ikke API-tokenet lenger."

@@ -30,6 +30,7 @@ import pytest_socket
 
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.openesl.const import DOMAIN
@@ -134,6 +135,22 @@ async def test_live(hass: HomeAssistant, tmp_path, ap_url) -> None:
     )
     assert reply["tags"][0]["mac"] == SIM_MAC
     await _wait_shown(hass, f"binary_sensor.{name}_update_pending")
+
+    # Fields by name (openESL #182, AP firmware after 0.9.2); an older checkout's AP gives the
+    # integration's own error instead of the AP's 422
+    with open(os.path.join(ROOT, "ap", "components", "esl_core", "esl_api.c")) as f:
+        by_name = "object of strings by field name" in f.read()
+    data = {"mac": SIM_MAC, "layout": "text", "fields": {"line1": "By name", "line3": 7}}
+    if by_name:
+        reply = await hass.services.async_call(DOMAIN, "send", data, blocking=True, return_response=True)
+        assert reply["tags"][0]["changed"] is True
+        await _wait_shown(hass, f"binary_sensor.{name}_update_pending")
+        # The AP keeps the fields in the layout's order
+        tag = await entry.runtime_data.api._request("GET", f"/api/tags/{SIM_MAC}")
+        assert tag["fields"][:3] == ["By name", "", "7"], tag
+    else:
+        with pytest.raises(HomeAssistantError, match="newer than 0.9.2"):
+            await hass.services.async_call(DOMAIN, "send", data, blocking=True)
 
     model = entry.runtime_data.data.tags[SIM_MAC]["model"]
     size = {"2.9": (296, 128), "1.54": (200, 200)}[model]
