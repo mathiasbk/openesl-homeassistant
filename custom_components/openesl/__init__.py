@@ -13,11 +13,12 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
 from .api import OpenEslApi
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
-from .coordinator import OpenEslConfigEntry, OpenEslCoordinator, coordinators
+from .coordinator import SIGNAL_UPDATED, OpenEslConfigEntry, OpenEslCoordinator, coordinators
 from .services import async_setup_services
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
@@ -38,6 +39,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     coordinators(hass)[entry.entry_id] = coordinator
+    # The first refresh told the other APs' tag entities before this AP was in the list:
+    # tell them again, so a tag this AP heard last shows what it says (and not only from
+    # the next poll)
+    async_dispatcher_send(hass, SIGNAL_UPDATED, entry.entry_id)
 
     @callback
     def forget() -> None:
