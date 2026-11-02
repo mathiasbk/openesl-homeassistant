@@ -16,6 +16,7 @@ from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
+from custom_components.openesl import services
 from custom_components.openesl.const import DOMAIN
 from custom_components.openesl.entity import tag_model
 
@@ -419,6 +420,19 @@ async def test_send_batches_of_50(hass: HomeAssistant, ap, entry) -> None:
     macs = [f"{i:016X}" for i in range(1, 121)]
     await hass.services.async_call(DOMAIN, "send", {"mac": macs, "layout": "text", "fields": ["Hei"]}, blocking=True)
     assert [len(b["tags"]) for b, _ in _sent(ap, "PUT", "/api/tags")] == [50, 50, 20]
+
+
+async def test_send_many_fields_in_smaller_batches(hass: HomeAssistant, ap, entry) -> None:
+    # 50 tags with 16 fields are about 1,150 JSON tokens: more than the AP takes in one body (413)
+    await _setup(hass, entry)
+    ap.put(f"{URL}/api/tags", json={"tags": []})
+    macs = [f"{i:016X}" for i in range(1, 121)]
+    fields = [f"f{k}" for k in range(16)]
+    await hass.services.async_call(DOMAIN, "send", {"mac": macs, "layout": "text", "fields": fields}, blocking=True)
+    bodies = [b for b, _ in _sent(ap, "PUT", "/api/tags")]
+    assert sum(len(b["tags"]) for b in bodies) == 120
+    assert all(len(b["tags"]) < 50 for b in bodies)
+    assert all(services._json_tokens(b) <= 1024 for b in bodies)
 
 
 async def test_send_refused(hass: HomeAssistant, ap, entry) -> None:

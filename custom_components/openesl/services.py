@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime
+import json
 from pathlib import Path
 import re
 from typing import Any
@@ -36,6 +37,8 @@ from .const import (
     ATTR_PATH,
     ATTR_PRICE_HIGHLIGHT,
     BATCH_MAX,
+    BODY_MAX_BYTES,
+    BODY_MAX_TOKENS,
     DOMAIN,
     SERVICE_REFRESH,
     SERVICE_SEND,
@@ -194,6 +197,21 @@ def _error(err: OpenEslError, done: int = 0) -> HomeAssistantError:
     )
 
 
+def _json_tokens(value: Any) -> int:
+    """JSON tokens as the AP's parser counts them: one per value and one per key."""
+    if isinstance(value, dict):
+        return 1 + sum(1 + _json_tokens(v) for v in value.values())
+    if isinstance(value, (list, tuple)):
+        return 1 + sum(_json_tokens(v) for v in value)
+    return 1
+
+
+def _batch_size(row: dict[str, Any]) -> int:
+    """How many rows like this one go in one PUT /api/tags: 50, or fewer with many fields."""
+    size = len(json.dumps(row).encode()) + 1
+    return max(1, min(BATCH_MAX, BODY_MAX_TOKENS // _json_tokens(row), BODY_MAX_BYTES // size))
+
+
 def _unix(when: datetime) -> int:
     # A time without a zone is Home Assistant's own time zone
     if when.tzinfo is None:
@@ -219,8 +237,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
             entry: OpenEslConfigEntry = hass.config_entries.async_get_known_entry(entry_id)
             coordinator = entry.runtime_data
             try:
-                for i in range(0, len(macs), BATCH_MAX):
-                    rows = [{"mac": m, **content} for m in macs[i : i + BATCH_MAX]]
+                step = _batch_size({"mac": macs[0], **content})
+                for i in range(0, len(macs), step):
+                    rows = [{"mac": m, **content} for m in macs[i : i + step]]
                     results += await coordinator.api.set_tags(rows)
             except OpenEslError as err:
                 raise _error(err, len(results)) from err
