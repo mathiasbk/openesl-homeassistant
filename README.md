@@ -125,6 +125,10 @@ data:
 
 Reads the tags now instead of at the next minute.
 
+## Reporting a problem
+
+Open an [issue](https://github.com/mathiasbk/openesl-homeassistant/issues) and attach a diagnostics file. On the AP's device page, or the tag's, open the menu (⋮) → **Download diagnostics**. The file has the integration's version, what the AP said at its last read (firmware, `/api/health`, `/api/wifi`), and for a tag its row from `GET /api/tags` and its details from `GET /api/tags/{mac}` (layout, frame, and when scheduled content takes effect). The API token, the AP's address and IP, WiFi names and the tags' field text are replaced by `**REDACTED**`; the AP's hostname (`openesl-xxxx`) stays, since it helps to find the AP. Look through the file before you attach it anyway. If the AP does not answer for the tag, the file says why in `details.error`.
+
 ## Battery
 
 Everything in [home-assistant.md, "Limits and timing"](https://github.com/mathiasbk/openESL/blob/master/docs/home-assistant.md#limits-and-timing) holds: every new screen costs the tag power, so send when something has changed and round numbers, and do not lower the poll interval. Reading the sensors costs the tags nothing: the integration only asks the AP.

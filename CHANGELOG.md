@@ -2,6 +2,10 @@
 
 Each version has its own section. When `version` in `custom_components/openesl/manifest.json` changes on `main`, the release workflow tags `v<version>` and makes the GitHub release with that section as its text, so HACS offers it. A section always says how to upgrade.
 
+## Unreleased
+
+- **Download diagnostics:** the AP's and each tag's device page (⋮ → **Download diagnostics**) give a file to attach to a bug report: the integration's version, the AP's firmware, health and WiFi, and for a tag its row and its content details from the AP (#17). The token, the AP's address and IP, WiFi names and the tags' field text are removed. If the AP cannot answer for the tag, the file says why instead of failing.
+
 ## 0.4.0
 
 - **Fields by name:** `fields` in `openesl.send` can be a mapping by the layout's field names (`price: "44.90"`) as well as a list in the layout's order (openESL #182). An automation then keeps showing the right text in the right place when the layout's field order changes or the tag gets another layout with the same names. A field left out is empty.

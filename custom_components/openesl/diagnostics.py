@@ -13,7 +13,10 @@ from .api import OpenEslError
 from .coordinator import OpenEslConfigEntry
 from .const import DOMAIN
 
-TO_REDACT = {"token", "host", "ssid", "setup_ssid", "ip", "fields", "content"}
+# title and unique_id are the AP's hostname, or its address when it has none
+TO_REDACT = {
+    "token", "host", "ssid", "setup_ssid", "ip", "fields", "content", "title", "unique_id",
+}
 
 
 async def _base_diagnostics(
