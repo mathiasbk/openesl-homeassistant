@@ -43,6 +43,8 @@ Two things go wrong most often:
 - **An unknown layout**: the layout is not on the AP for that tag's model. `text` and `price` are always there; the others come from the designer, see [Sending text](Sending-text#layouts).
 - **Text that is too long**: all the fields together are limited to about 90 characters. Shorten the text, see [Sending text](Sending-text#the-text-limit).
 
+Something else? Open an issue and attach the tag's diagnostics: on its device page, the menu (⋮) → **Download diagnostics**. The token, addresses, WiFi names and field text are removed from the file.
+
 ## 4. Put it in an automation
 
 Settings → Automations & scenes → **Create automation** → **Create new automation**, then the menu (⋮) → **Edit in YAML**. Paste one of the [examples](Home#examples), change the entities to your own, and pick your tag in the visual editor (the `device_id` line).
