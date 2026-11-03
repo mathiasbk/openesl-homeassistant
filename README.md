@@ -131,6 +131,8 @@ Everything in [home-assistant.md, "Limits and timing"](https://github.com/mathia
 
 ## For developers
 
+Pull requests go to the `development` branch; `main` only gets releases. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 The tests are in `tests/` (Home Assistant's test harness, Python 3.13): `pip install -r requirements_test.txt`, then `pytest`. The last test runs against the OpenESL simulator through the esl-client bridge, from an openESL checkout next to this one (or in `OPENESL_REPO`): `make -C ../openESL/sim build/29/esl-sim`, then `OPENESL_LIVE_URL=sim pytest`. CI does the same, with Home Assistant's `hassfest` and HACS's checks. CI builds the simulator from openESL's `development` branch, so a change there can turn this repository's CI red.
 
 ## Icon
@@ -139,7 +141,7 @@ The icon is in `custom_components/openesl/brand/` (the tag from the OpenESL web 
 
 ## Releases
 
-A release is made by itself when `version` in `custom_components/openesl/manifest.json` changes on `main` (`.github/workflows/release.yml`). Its text is that version's section in [CHANGELOG.md](CHANGELOG.md), which must say how to upgrade (CI checks it). So a release is one pull request: the new version in the manifest and its section in the changelog.
+A release is made by itself when `version` in `custom_components/openesl/manifest.json` changes on `main` (`.github/workflows/release.yml`). Its text is that version's section in [CHANGELOG.md](CHANGELOG.md), which must say how to upgrade (CI checks it). So a release is two pull requests: the new version in the manifest and its section in the changelog into `development`, then `development` into `main` (see [CONTRIBUTING.md](CONTRIBUTING.md#releases)).
 
 ## License
 
