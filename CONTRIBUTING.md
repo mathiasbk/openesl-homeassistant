@@ -17,7 +17,7 @@ Run what CI runs before you push: `pip install -r requirements_test.txt`, then `
 - Target `development`.
 - Fill in the template: what changed, how you tested it, and what breaks if it is wrong.
 - Keep it to one change. Docs that describe the change go in the same pull request: the README, and the wiki pages in `wiki/` (edit them there, not on GitHub's wiki pages).
-- A change users notice gets a line in [CHANGELOG.md](CHANGELOG.md) under the next version.
+- A change users notice gets a line in [CHANGELOG.md](CHANGELOG.md) under `## Unreleased` at the top (add that heading if it is not there).
 - Title and body in English.
 
 ## Review and merge
@@ -29,5 +29,5 @@ Run what CI runs before you push: `pip install -r requirements_test.txt`, then `
 
 Releases are made from `development` by the maintainer, in two pull requests:
 
-1. Into `development`: the new `version` in `custom_components/openesl/manifest.json` and its section in [CHANGELOG.md](CHANGELOG.md), which must say how to upgrade (CI checks it).
+1. Into `development`: the new `version` in `custom_components/openesl/manifest.json`, and `## Unreleased` in [CHANGELOG.md](CHANGELOG.md) renamed to `## X.Y.Z` with a `### Upgrading` part that says how to upgrade (CI checks it).
 2. From `development` into `main`, titled "Release X.Y.Z", merged with a merge commit. When the manifest version changes on `main`, `.github/workflows/release.yml` tags `vX.Y.Z` and makes the GitHub release, so HACS offers it.
