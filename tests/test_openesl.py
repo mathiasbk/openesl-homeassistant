@@ -703,6 +703,22 @@ async def test_config_entry_diagnostics_redacts_credentials_and_wifi(hass: HomeA
     assert WIFI["ssid"] not in str(diagnostics)
 
 
+async def test_config_entry_diagnostics_redacts_address_in_title(hass: HomeAssistant, aioclient_mock) -> None:
+    """An AP added by its IP has the IP as title and unique_id: those are redacted too."""
+    from custom_components.openesl.diagnostics import async_get_config_entry_diagnostics
+
+    tags = {**TAGS, "tags": []}
+    e = _second_ap(hass, aioclient_mock, tags)
+    hass.config_entries.async_update_entry(e, title="192.168.0.171", unique_id="192.168.0.171")
+    await hass.config_entries.async_setup(e.entry_id)
+    await hass.async_block_till_done()
+    diagnostics = await async_get_config_entry_diagnostics(hass, e)
+
+    assert diagnostics["entry"]["title"] == "**REDACTED**"
+    assert diagnostics["entry"]["unique_id"] == "**REDACTED**"
+    assert "192.168.0.171" not in str(diagnostics)
+
+
 async def test_device_diagnostics_redacts_tag_fields(hass: HomeAssistant, ap, entry) -> None:
     """A tag download combines its listed row with the AP's detailed response."""
     from custom_components.openesl.diagnostics import async_get_device_diagnostics
