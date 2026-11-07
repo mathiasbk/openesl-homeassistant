@@ -10,6 +10,8 @@ Each version has its own section. When `version` in `custom_components/openesl/m
 
 - **Two APs:** a tag that two APs list shows the values of the AP that heard it last, and hangs under that AP, right from startup instead of after the first poll.
 
+- **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy. (#12).
+
 ## 0.4.0
 
 - **Fields by name:** `fields` in `openesl.send` can be a mapping by the layout's field names (`price: "44.90"`) as well as a list in the layout's order (openESL #182). An automation then keeps showing the right text in the right place when the layout's field order changes or the tag gets another layout with the same names. A field left out is empty.

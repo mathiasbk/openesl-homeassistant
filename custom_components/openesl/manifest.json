@@ -1,6 +1,7 @@
 {
   "domain": "openesl",
   "name": "OpenESL",
+  "categories": ["hubs_protocols.wireless_protocols"],
   "codeowners": ["@mathiasbk"],
   "config_flow": true,
   "documentation": "https://github.com/mathiasbk/openesl-homeassistant",

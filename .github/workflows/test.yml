@@ -7,6 +7,10 @@ on:
   push:
     branches: [main, development]
   pull_request:
+  # Every night too: the tests run against openESL's development branch, and HACS and
+  # Home Assistant change their checks, so a break shows up before the next pull request
+  schedule:
+    - cron: "17 3 * * *"
   workflow_dispatch:
 
 permissions:
