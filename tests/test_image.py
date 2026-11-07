@@ -1,11 +1,14 @@
 """The Screen image entity: GET /api/tags/{mac}/image as a PNG, fetched only when it changed."""
 
+import asyncio
 import base64
 from http import HTTPStatus
 import struct
+from unittest.mock import patch
 import zlib
 
 from freezegun.api import FrozenDateTimeFactory
+from homeassistant.components.image import DOMAIN as IMAGE_DOMAIN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
@@ -187,3 +190,89 @@ async def test_screen_new_tag_without_content(hass: HomeAssistant, aioclient_moc
     client = await hass_client_no_auth()
     assert (await _look(hass, client, SCREEN2)).status == HTTPStatus.INTERNAL_SERVER_ERROR
     assert _image_calls(aioclient_mock, MAC2) == []
+
+
+def _poll(aioclient_mock, *tags):
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(f"{URL}/api/tags", json={"ap": AP, "tags": list(tags)})
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+
+
+async def _refresh(hass):
+    await hass.services.async_call("openesl", "refresh", {}, blocking=True)
+    await hass.async_block_till_done()
+
+
+async def test_screen_two_looks_at_once_draw_once(hass: HomeAssistant, ap, entry) -> None:
+    """Two cards that open together right after a change: the AP draws the image once."""
+    await _setup(hass, entry)
+    screen = hass.data[IMAGE_DOMAIN].get_entity(SCREEN1)
+    calls = 0
+
+    async def slow_image(mac):
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0.01)
+        return _reply(MAC1, PIXELS)
+
+    with patch.object(entry.runtime_data.api, "get_tag_image", slow_image):
+        first, second = await asyncio.gather(screen.async_image(), screen.async_image())
+    assert first == second and first is not None
+    assert calls == 1
+
+
+async def test_screen_content_error_cleared(hass: HomeAssistant, ap, entry, hass_client_no_auth) -> None:
+    """A 409 for a layout not in the file is asked again once the AP clears content_error,
+    which it does without a new content_id."""
+    _poll(ap, tag(MAC1, content_error="layout"), TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", status=409, json={"error": "layout not in file"})
+    await _setup(hass, entry)
+    client = await hass_client_no_auth()
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.INTERNAL_SERVER_ERROR
+
+    _poll(ap, TAGS["tags"][0], TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", json=_reply(MAC1, PIXELS))
+    await _refresh(hass)
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.OK
+    assert len(_image_calls(ap, MAC1)) == 1
+
+
+async def test_screen_busy_keeps_last_image(hass: HomeAssistant, ap, entry, hass_client_no_auth) -> None:
+    """New content the AP cannot draw just now (503): the card keeps the last image instead of
+    a broken one, and the next look asks again."""
+    ap.get(f"{URL}/api/tags/{MAC1}/image", json=_reply(MAC1, PIXELS))
+    await _setup(hass, entry)
+    client = await hass_client_no_auth()
+    before = await (await _look(hass, client, SCREEN1)).read()
+
+    _poll(ap, tag(MAC1, content_id=7, image_id=8), TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", status=503, json={"error": "no memory"})
+    await _refresh(hass)
+    resp = await _look(hass, client, SCREEN1)
+    assert resp.status == HTTPStatus.OK
+    assert await resp.read() == before
+    assert len(_image_calls(ap, MAC1)) == 1
+
+    new = [[1] * 4 for _ in range(10)]
+    _poll(ap, tag(MAC1, content_id=7, image_id=8), TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", json=_reply(MAC1, new, content_id=7, image_id=8))
+    assert _decode_png(await (await _look(hass, client, SCREEN1)).read())[3] == new
+
+
+async def test_screen_no_fallback_past_a_409(hass: HomeAssistant, ap, entry, hass_client_no_auth) -> None:
+    """A drawn, then B the AP cannot draw (409), then C while it is busy (503): empty, not A."""
+    ap.get(f"{URL}/api/tags/{MAC1}/image", json=_reply(MAC1, PIXELS))
+    await _setup(hass, entry)
+    client = await hass_client_no_auth()
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.OK
+
+    _poll(ap, tag(MAC1, content_id=7, image_id=8), TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", status=409, json={"error": "cannot draw"})
+    await _refresh(hass)
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.INTERNAL_SERVER_ERROR
+
+    _poll(ap, tag(MAC1, content_id=9, image_id=10), TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", status=503, json={"error": "no memory"})
+    await _refresh(hass)
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.INTERNAL_SERVER_ERROR
