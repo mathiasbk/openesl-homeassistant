@@ -8,7 +8,7 @@ Each version has its own section. When `version` in `custom_components/openesl/m
 
 - **Screen:** each tag has an image entity that shows what the tag shows, drawn by the AP like the dashboard's **Screen** column (#10). Put it in a picture card to see what an automation sent, without going to the tag. The image is fetched only when the tag's content or drawing changed, and only when something shows it, so the AP gets no more work between changes. It is empty before the tag has content, or when the AP cannot draw it (`content_error`). While the AP is busy or does not answer, the card keeps the last image.
 
-- **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy. The manifest names its category (`hubs_protocols.wireless_protocols`) for Home Assistant's integration catalog (#12).
+- **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy. (#12).
 
 ## 0.4.0
 
