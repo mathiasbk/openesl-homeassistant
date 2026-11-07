@@ -1,12 +1,13 @@
 """Image: what each tag shows, drawn by the AP (GET /api/tags/{mac}/image), as a PNG.
 
 The AP draws the image on each request, so it is fetched only when the tag's content or
-its drawing changed (content_id, image_id, model), and only when something asks for it
+its drawing changed (content_id, image_id, model, content_error), and only when something asks for it
 (a card that is open); the PNG is kept until the next change.
 """
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import struct
@@ -19,7 +20,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from .api import OpenEslApiError, OpenEslError
-from .coordinator import OpenEslConfigEntry, OpenEslCoordinator
+from .coordinator import OpenEslConfigEntry, OpenEslCoordinator, tag_source
 from .entity import OpenEslTagEntity, setup_tag_platform
 
 PARALLEL_UPDATES = 1
@@ -34,7 +35,9 @@ def screen_key(tag: dict[str, Any]) -> tuple[Any, ...] | None:
     """What the drawn image depends on; None: nothing to show (no content yet)."""
     if not tag.get("content_id"):
         return None
-    return (tag.get("content_id"), tag.get("image_id"), tag.get("model"))
+    # content_error: a 409 for a layout not in the file stands until the AP clears it at a
+    # later poll, which it does without a new content_id
+    return (tag.get("content_id"), tag.get("image_id"), tag.get("model"), tag.get("content_error"))
 
 
 def _chunk(kind: bytes, data: bytes) -> bytes:
@@ -107,10 +110,18 @@ class TagScreen(OpenEslTagEntity, ImageEntity):
     def __init__(self, coordinator: OpenEslCoordinator, mac: str) -> None:
         OpenEslTagEntity.__init__(self, coordinator, mac, SCREEN.key)
         ImageEntity.__init__(self, coordinator.hass)
-        self._key = screen_key(coordinator.data.tags.get(mac, {}))
+        # self.tag needs hass, which is set when the entity is added: ask the AP that heard
+        # the tag last here too
+        source = tag_source(coordinator.hass, mac) or coordinator
+        self._key = screen_key(source.data.tags.get(mac, {}))
         self._png: bytes | None = None
         # The key of the PNG above, or of a reply that stands until the key changes (4xx)
         self._png_key: tuple[Any, ...] | None = None
+        # The last image the AP drew, shown while it cannot draw the new one (429, 503,
+        # no answer) instead of a broken image
+        self._last_png: bytes | None = None
+        # One request at a time: two cards open right after a change draw it once on the AP
+        self._lock = asyncio.Lock()
         self._attr_image_last_updated = dt_util.utcnow() if self._key else None
 
     @property
@@ -131,6 +142,10 @@ class TagScreen(OpenEslTagEntity, ImageEntity):
         super()._handle_coordinator_update()
 
     async def async_image(self) -> bytes | None:
+        async with self._lock:
+            return await self._fetch()
+
+    async def _fetch(self) -> bytes | None:
         key = self._key
         if key is None:
             return None
@@ -143,11 +158,14 @@ class TagScreen(OpenEslTagEntity, ImageEntity):
             # until the content changes. 429 and 503 (no memory) are asked again.
             if 400 <= err.status < 500 and err.status != 429:
                 self._png, self._png_key = None, key
-            return None
+                return None
+            return self._last_png
         except OpenEslError:
-            return None
+            return self._last_png
         png = tag_image_png(reply)
         # The tag may have got new content while the AP drew this one: keep it for its key
         if png is not None and reply.get("content_id") == key[0]:
             self._png, self._png_key = png, key
-        return png
+        if png is not None:
+            self._last_png = png
+        return png if png is not None else self._last_png
