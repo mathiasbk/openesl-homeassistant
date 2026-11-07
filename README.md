@@ -29,7 +29,7 @@ Each AP is known by its name. An AP set up with firmware 0.6.0 or older is named
 
 ## What it shows
 
-Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /api/wifi` from the AP. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
+Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /api/wifi` from the AP, and a tag's screen when it changed and is looked at. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
 
 | Device | Entity | From the AP |
 |---|---|---|
@@ -38,6 +38,7 @@ Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /
 | Tag | Last check-in | when it last polled |
 | Tag | Problem | on when `/api/health` lists it: silent, unseen, draw failed, low battery or content error; which ones in the attribute `problems` |
 | Tag | Battery | on (low) when `/api/health` says `low_battery` (below 2.5 V) |
+| Tag | Screen | an image of what the tag shows, drawn by the AP (`GET /api/tags/{mac}/image`, the dashboard's **Screen** column); attributes `content_id`, `pending` (the tag does not show it yet). Empty before the tag has content, or when the AP cannot draw it |
 | Tag | Update pending, Firmware | diagnostic: the tag does not show its content yet; its firmware |
 | Tag | Poll interval, Lost polls | diagnostic, off until you turn them on |
 | AP | Tags, Tags with problems | how many tags the AP knows, and how many `/api/health` lists |
@@ -45,6 +46,8 @@ Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /
 | AP | Radio, Radio 1-3 | connectivity, diagnostic: the AP has contact with its radio. Only on an ESP32-S3 AP, whose radio is an ESP32-C6 on the cable (openESL firmware after 0.9.2) or over WiFi; Radio 1-3 when it has several radios over WiFi. Attributes `via` (`uart`: on the cable, `wifi`), `lost`, `lost_s`, `id`, `channel` |
 
 **Lost radio:** when the S3 has had no contact with a C6 for 30 s (`radio_problems` in `/api/health`, openESL firmware after 0.9.2), a repair shows under Settings → System → Repairs: "openesl-xxxx: radio is not answering", with what to check. Until it answers again its tags hear nothing from the AP. The repair goes away by itself when the radio is back. To be told on your phone, automate on the Radio entity turning off, for example for 1 minute.
+
+**Screen:** the AP draws the image only when something asks for it (a card with the image open), and only again once the tag's content or its drawing changes, so the AP has no more work between changes. Put it in a **Picture entity** card (or **Picture glance**) to see on the dashboard what an automation sent, and the tag's **Update pending** next to it to see whether the tag shows it yet. A tag that draws its content itself (not from the AP's image) shows the same pixels; after a change to a layout in the AP's layout file, such a tag's image follows at its next new content.
 
 A tag the AP no longer lists turns unavailable; delete its device from its page (⋮ → Delete) when it is gone for good. A tag moved to another AP stays in the old AP's table for a while: with both APs in Home Assistant it has one device, which shows what the AP that heard it last says, and the actions send to that AP.
 
@@ -125,11 +128,17 @@ data:
 
 Reads the tags now instead of at the next minute.
 
+## Reporting a problem
+
+Open an [issue](https://github.com/mathiasbk/openesl-homeassistant/issues) and attach a diagnostics file. On the AP's device page, or the tag's, open the menu (⋮) → **Download diagnostics**. The file has the integration's version, what the AP said at its last read (firmware, `/api/health`, `/api/wifi`), and for a tag its row from `GET /api/tags` and its details from `GET /api/tags/{mac}` (layout, frame, and when scheduled content takes effect). The API token, the AP's address and IP, WiFi names and the tags' field text are replaced by `**REDACTED**`; the AP's hostname (`openesl-xxxx`) stays, since it helps to find the AP. Look through the file before you attach it anyway. If the AP does not answer for the tag, the file says why in `details.error`.
+
 ## Battery
 
 Everything in [home-assistant.md, "Limits and timing"](https://github.com/mathiasbk/openESL/blob/master/docs/home-assistant.md#limits-and-timing) holds: every new screen costs the tag power, so send when something has changed and round numbers, and do not lower the poll interval. Reading the sensors costs the tags nothing: the integration only asks the AP.
 
 ## For developers
+
+Pull requests go to the `development` branch; `main` only gets releases. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The tests are in `tests/` (Home Assistant's test harness, Python 3.13): `pip install -r requirements_test.txt`, then `pytest`. The last test runs against the OpenESL simulator through the esl-client bridge, from an openESL checkout next to this one (or in `OPENESL_REPO`): `make -C ../openESL/sim build/29/esl-sim`, then `OPENESL_LIVE_URL=sim pytest`. CI does the same, with Home Assistant's `hassfest` and HACS's checks. CI builds the simulator from openESL's `development` branch, so a change there can turn this repository's CI red.
 
@@ -139,7 +148,7 @@ The icon is in `custom_components/openesl/brand/` (the tag from the OpenESL web 
 
 ## Releases
 
-A release is made by itself when `version` in `custom_components/openesl/manifest.json` changes on `main` (`.github/workflows/release.yml`). Its text is that version's section in [CHANGELOG.md](CHANGELOG.md), which must say how to upgrade (CI checks it). So a release is one pull request: the new version in the manifest and its section in the changelog.
+A release is made by itself when `version` in `custom_components/openesl/manifest.json` changes on `main` (`.github/workflows/release.yml`). Its text is that version's section in [CHANGELOG.md](CHANGELOG.md), which must say how to upgrade (CI checks it). So a release is two pull requests: the new version in the manifest and its section in the changelog into `development`, then `development` into `main` (see [CONTRIBUTING.md](CONTRIBUTING.md#releases)).
 
 ## License
 

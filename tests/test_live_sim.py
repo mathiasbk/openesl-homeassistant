@@ -28,6 +28,7 @@ import zlib
 import pytest
 import pytest_socket
 
+from homeassistant.components.image import DOMAIN as IMAGE_DOMAIN
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -153,6 +154,12 @@ async def test_live(hass: HomeAssistant, tmp_path, ap_url) -> None:
             await hass.services.async_call(DOMAIN, "send", data, blocking=True)
 
     model = entry.runtime_data.data.tags[SIM_MAC]["model"]
+    # The Screen entity: the AP's drawing of that content, as a PNG of the tag's size
+    screen = hass.data[IMAGE_DOMAIN].get_entity(f"image.{name}_screen")
+    shot = await screen.async_image()
+    assert shot[:8] == b"\x89PNG\r\n\x1a\n"
+    assert struct.unpack(">II", shot[16:24]) == {"2.9": (296, 128), "1.54": (200, 200)}[model]
+
     size = {"2.9": (296, 128), "1.54": (200, 200)}[model]
     picture = tmp_path / "tag.png"
     picture.write_bytes(png(*size))

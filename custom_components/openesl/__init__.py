@@ -1,7 +1,8 @@
 """OpenESL: price tags and signs on an OpenESL access point (https://github.com/mathiasbk/openESL).
 
 Uses only the AP's HTTP API (docs/openapi.yaml): GET /api/tags and /api/health once a
-minute for the sensors, PUT /api/tags and /api/tags/{mac}/image for the actions.
+minute for the sensors, GET /api/tags/{mac}/image when a tag's
+screen changed and is looked at, PUT /api/tags and /api/tags/{mac}/image for the actions.
 """
 
 from __future__ import annotations
@@ -21,7 +22,7 @@ from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import SIGNAL_UPDATED, OpenEslConfigEntry, OpenEslCoordinator, coordinators
 from .services import async_setup_services
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.IMAGE, Platform.SENSOR]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 

@@ -14,6 +14,7 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+from homeassistant.loader import async_get_integration
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.openesl import services
@@ -705,6 +706,86 @@ async def test_device_info_follows(hass: HomeAssistant, aioclient_mock, entry, f
     assert devices.async_get_device(identifiers={(DOMAIN, MAC1)}).sw_version == "0.9.0"
     assert devices.async_get_device(identifiers={(DOMAIN, "openesl-1a2b")}).sw_version == "0.9.0"
     assert hass.states.get("sensor.openesl_1a2b_wifi_signal").state == "-70"
+
+
+async def test_config_entry_diagnostics_redacts_credentials_and_wifi(hass: HomeAssistant, ap, entry) -> None:
+    """The download contains the latest AP snapshot, never its local secrets."""
+    from custom_components.openesl.diagnostics import async_get_config_entry_diagnostics
+
+    await _setup(hass, entry)
+    diagnostics = await async_get_config_entry_diagnostics(hass, entry)
+
+    assert diagnostics["version"] == (await async_get_integration(hass, DOMAIN)).manifest["version"]
+    assert diagnostics["ap"] == AP
+    assert diagnostics["health"] == HEALTH
+    assert diagnostics["wifi"]["ssid"] == "**REDACTED**"
+    assert diagnostics["wifi"]["ip"] == "**REDACTED**"
+    assert diagnostics["entry"]["data"]["token"] == "**REDACTED**"
+    assert diagnostics["entry"]["data"]["host"] == "**REDACTED**"
+    assert TOKEN not in str(diagnostics)
+    assert HOST not in str(diagnostics)
+    assert WIFI["ssid"] not in str(diagnostics)
+
+
+async def test_config_entry_diagnostics_redacts_address_in_title(hass: HomeAssistant, aioclient_mock) -> None:
+    """An AP added by its IP has the IP as title and unique_id: those are redacted too."""
+    from custom_components.openesl.diagnostics import async_get_config_entry_diagnostics
+
+    tags = {**TAGS, "tags": []}
+    e = _second_ap(hass, aioclient_mock, tags)
+    hass.config_entries.async_update_entry(e, title="192.168.0.171", unique_id="192.168.0.171")
+    await hass.config_entries.async_setup(e.entry_id)
+    await hass.async_block_till_done()
+    diagnostics = await async_get_config_entry_diagnostics(hass, e)
+
+    assert diagnostics["entry"]["title"] == "**REDACTED**"
+    assert diagnostics["entry"]["unique_id"] == "**REDACTED**"
+    assert "192.168.0.171" not in str(diagnostics)
+
+
+async def test_device_diagnostics_redacts_tag_fields(hass: HomeAssistant, ap, entry) -> None:
+    """A tag download combines its listed row with the AP's detailed response."""
+    from custom_components.openesl.diagnostics import async_get_device_diagnostics
+
+    details = {"mac": MAC1, "fields": ["Private shelf text"], "content": {"name": "Secret promo"}}
+    ap.get(f"{URL}/api/tags/{MAC1}", json=details)
+    await _setup(hass, entry)
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, MAC1)})
+
+    diagnostics = await async_get_device_diagnostics(hass, entry, device)
+
+    assert diagnostics["tag"] == TAGS["tags"][0]
+    assert diagnostics["details"]["mac"] == MAC1
+    assert diagnostics["details"]["fields"] == "**REDACTED**"
+    assert diagnostics["details"]["content"] == "**REDACTED**"
+
+
+async def test_device_diagnostics_returns_tag_lookup_error(hass: HomeAssistant, ap, entry) -> None:
+    """A removed or unreachable tag still produces a useful diagnostics download."""
+    from custom_components.openesl.diagnostics import async_get_device_diagnostics
+
+    ap.get(f"{URL}/api/tags/{MAC1}", status=404, json={"error": "not found"})
+    await _setup(hass, entry)
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, MAC1)})
+
+    diagnostics = await async_get_device_diagnostics(hass, entry, device)
+
+    assert diagnostics["tag"] == TAGS["tags"][0]
+    assert diagnostics["details"] == {"error": "404: not found"}
+
+
+async def test_access_point_device_diagnostics_need_no_tag_request(hass: HomeAssistant, ap, entry) -> None:
+    """The AP device has the config-entry snapshot but no tag-specific detail."""
+    from custom_components.openesl.diagnostics import async_get_device_diagnostics
+
+    await _setup(hass, entry)
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "openesl-1a2b")})
+
+    diagnostics = await async_get_device_diagnostics(hass, entry, device)
+
+    assert diagnostics["ap"] == AP
+    assert "tag" not in diagnostics
+    assert "details" not in diagnostics
 
 
 async def test_send_connection_lost_after_a_batch(hass: HomeAssistant, ap, entry) -> None:
