@@ -10,6 +10,9 @@
       "channel": { "default": "mdi:radio-tower" },
       "scheduled": { "default": "mdi:calendar-clock" }
     },
+    "image": {
+      "screen": { "default": "mdi:tag-text-outline" }
+    },
     "binary_sensor": {
       "pending": { "default": "mdi:timer-sand" }
     }

@@ -78,6 +78,9 @@
       "channel": { "name": "Radio channel" },
       "scheduled": { "name": "Scheduled content" }
     },
+    "image": {
+      "screen": { "name": "Screen" }
+    },
     "binary_sensor": {
       "problem": {
         "name": "Problem",

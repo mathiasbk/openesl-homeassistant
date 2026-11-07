@@ -29,7 +29,7 @@ Each AP is known by its name. An AP set up with firmware 0.6.0 or older is named
 
 ## What it shows
 
-Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /api/wifi` from the AP. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
+Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /api/wifi` from the AP, and a tag's screen when it changed and is looked at. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
 
 | Device | Entity | From the AP |
 |---|---|---|
@@ -38,6 +38,7 @@ Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /
 | Tag | Last check-in | when it last polled |
 | Tag | Problem | on when `/api/health` lists it: silent, unseen, draw failed, low battery or content error; which ones in the attribute `problems` |
 | Tag | Battery | on (low) when `/api/health` says `low_battery` (below 2.5 V) |
+| Tag | Screen | an image of what the tag shows, drawn by the AP (`GET /api/tags/{mac}/image`, the dashboard's **Screen** column); attributes `content_id`, `pending` (the tag does not show it yet). Empty before the tag has content, or when the AP cannot draw it |
 | Tag | Update pending, Firmware | diagnostic: the tag does not show its content yet; its firmware |
 | Tag | Poll interval, Lost polls | diagnostic, off until you turn them on |
 | AP | Tags, Tags with problems | how many tags the AP knows, and how many `/api/health` lists |
@@ -45,6 +46,8 @@ Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /
 | AP | Radio, Radio 1-3 | connectivity, diagnostic: the AP has contact with its radio. Only on an ESP32-S3 AP, whose radio is an ESP32-C6 on the cable (openESL firmware after 0.9.2) or over WiFi; Radio 1-3 when it has several radios over WiFi. Attributes `via` (`uart`: on the cable, `wifi`), `lost`, `lost_s`, `id`, `channel` |
 
 **Lost radio:** when the S3 has had no contact with a C6 for 30 s (`radio_problems` in `/api/health`, openESL firmware after 0.9.2), a repair shows under Settings → System → Repairs: "openesl-xxxx: radio is not answering", with what to check. Until it answers again its tags hear nothing from the AP. The repair goes away by itself when the radio is back. To be told on your phone, automate on the Radio entity turning off, for example for 1 minute.
+
+**Screen:** the AP draws the image only when something asks for it (a card with the image open), and only again once the tag's content or its drawing changes, so the AP has no more work between changes. Put it in a **Picture entity** card (or **Picture glance**) to see on the dashboard what an automation sent, and the tag's **Update pending** next to it to see whether the tag shows it yet. A tag that draws its content itself (not from the AP's image) shows the same pixels; after a change to a layout in the AP's layout file, such a tag's image follows at its next new content.
 
 A tag the AP no longer lists turns unavailable; delete its device from its page (⋮ → Delete) when it is gone for good. A tag moved to another AP stays in the old AP's table for a while: with both APs in Home Assistant it has one device, which shows what the AP that heard it last says, and the actions send to that AP.
 
