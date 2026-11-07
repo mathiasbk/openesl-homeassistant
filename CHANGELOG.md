@@ -8,6 +8,8 @@ Each version has its own section. When `version` in `custom_components/openesl/m
 
 - **Screen:** each tag has an image entity that shows what the tag shows, drawn by the AP like the dashboard's **Screen** column (#10). Put it in a picture card to see what an automation sent, without going to the tag. The image is fetched only when the tag's content or drawing changed, and only when something shows it, so the AP gets no more work between changes. It is empty before the tag has content, or when the AP cannot draw it (`content_error`). While the AP is busy or does not answer, the card keeps the last image.
 
+- **Two APs:** a tag that two APs list shows the values of the AP that heard it last, and hangs under that AP, right from startup instead of after the first poll.
+
 - **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy. (#12).
 
 ## 0.4.0
