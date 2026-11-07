@@ -89,6 +89,11 @@
         "name": "WiFi-signal"
       }
     },
+    "image": {
+      "screen": {
+        "name": "Skjerm"
+      }
+    },
     "binary_sensor": {
       "problem": {
         "name": "Problem",

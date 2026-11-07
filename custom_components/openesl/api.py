@@ -119,6 +119,10 @@ class OpenEslApi:
         """GET /api/tags/{mac}: the AP's detailed current tag record."""
         return await self._request("GET", f"/api/tags/{mac}")
 
+    async def get_tag_image(self, mac: str) -> dict[str, Any]:
+        """GET /api/tags/{mac}/image: the tag's screen as the AP draws it, bit planes in base64."""
+        return await self._request("GET", f"/api/tags/{mac}/image")
+
     async def set_tags(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """PUT /api/tags with at most 50 rows; all or nothing on the AP."""
         reply = await self._request("PUT", "/api/tags", json={"tags": rows})
