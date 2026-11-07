@@ -6,8 +6,10 @@ From nothing to text on a tag in about ten minutes. You need an OpenESL AP on th
 
 The integration is installed with [HACS](https://hacs.xyz):
 
-1. HACS → the menu (⋮) → **Custom repositories**. Add `https://github.com/mathiasbk/openesl-homeassistant` with the type **Integration**.
-2. Search for **OpenESL** in HACS, press **Download**, and restart Home Assistant.
+[![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mathiasbk&repository=openesl-homeassistant&category=integration)
+
+1. Press the button above: it opens your Home Assistant (set its address the first time) with the integration in HACS. Without the button: HACS → the menu (⋮) → **Custom repositories**, add `https://github.com/mathiasbk/openesl-homeassistant` with the type **Integration**, and search for **OpenESL**.
+2. Press **Download**, and restart Home Assistant.
 
 It needs Home Assistant 2025.3 or newer.
 

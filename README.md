@@ -12,8 +12,10 @@ Without the integration, a `rest_command` does the same for text: [home-assistan
 
 With [HACS](https://hacs.xyz):
 
-1. HACS → the menu (⋮) → **Custom repositories**: `https://github.com/mathiasbk/openesl-homeassistant`, type **Integration**.
-2. Find **OpenESL** in HACS, **Download**, and restart Home Assistant.
+[![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=mathiasbk&repository=openesl-homeassistant&category=integration)
+
+1. Press the button above, which opens the integration in your HACS. Without the button: HACS → the menu (⋮) → **Custom repositories**: `https://github.com/mathiasbk/openesl-homeassistant`, type **Integration**.
+2. **Download** **OpenESL**, and restart Home Assistant.
 
 By hand: copy the folder `custom_components/openesl` from this repository into `config/custom_components/` on the Home Assistant machine, and restart Home Assistant.
 
