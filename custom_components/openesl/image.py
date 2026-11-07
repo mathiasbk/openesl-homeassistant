@@ -158,6 +158,8 @@ class TagScreen(OpenEslTagEntity, ImageEntity):
             # until the content changes. 429 and 503 (no memory) are asked again.
             if 400 <= err.status < 500 and err.status != 429:
                 self._png, self._png_key = None, key
+                # An older image is not what the tag has now: nothing to fall back to
+                self._last_png = None
                 return None
             return self._last_png
         except OpenEslError:

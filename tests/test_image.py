@@ -258,3 +258,21 @@ async def test_screen_busy_keeps_last_image(hass: HomeAssistant, ap, entry, hass
     _poll(ap, tag(MAC1, content_id=7, image_id=8), TAGS["tags"][1])
     ap.get(f"{URL}/api/tags/{MAC1}/image", json=_reply(MAC1, new, content_id=7, image_id=8))
     assert _decode_png(await (await _look(hass, client, SCREEN1)).read())[3] == new
+
+
+async def test_screen_no_fallback_past_a_409(hass: HomeAssistant, ap, entry, hass_client_no_auth) -> None:
+    """A drawn, then B the AP cannot draw (409), then C while it is busy (503): empty, not A."""
+    ap.get(f"{URL}/api/tags/{MAC1}/image", json=_reply(MAC1, PIXELS))
+    await _setup(hass, entry)
+    client = await hass_client_no_auth()
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.OK
+
+    _poll(ap, tag(MAC1, content_id=7, image_id=8), TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", status=409, json={"error": "cannot draw"})
+    await _refresh(hass)
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.INTERNAL_SERVER_ERROR
+
+    _poll(ap, tag(MAC1, content_id=9, image_id=10), TAGS["tags"][1])
+    ap.get(f"{URL}/api/tags/{MAC1}/image", status=503, json={"error": "no memory"})
+    await _refresh(hass)
+    assert (await _look(hass, client, SCREEN1)).status == HTTPStatus.INTERNAL_SERVER_ERROR
