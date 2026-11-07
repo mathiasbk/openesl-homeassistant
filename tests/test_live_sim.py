@@ -16,6 +16,7 @@ It sends to the tag with the simulator's MAC unless OPENESL_LIVE_MAC names anoth
 """
 
 import asyncio
+import glob
 import os
 import socket
 import subprocess
@@ -139,8 +140,11 @@ async def test_live(hass: HomeAssistant, tmp_path, ap_url) -> None:
 
     # Fields by name (openESL #182, AP firmware after 0.9.2); an older checkout's AP gives the
     # integration's own error instead of the AP's 422
-    with open(os.path.join(ROOT, "ap", "components", "esl_core", "esl_api.c")) as f:
-        by_name = "object of strings by field name" in f.read()
+    # (esl_api.c, split into esl_api_*.c by openESL #318)
+    by_name = False
+    for path in glob.glob(os.path.join(ROOT, "ap", "components", "esl_core", "esl_api*.c")):
+        with open(path) as f:
+            by_name = by_name or "object of strings by field name" in f.read()
     data = {"mac": SIM_MAC, "layout": "text", "fields": {"line1": "By name", "line3": 7}}
     if by_name:
         reply = await hass.services.async_call(DOMAIN, "send", data, blocking=True, return_response=True)
