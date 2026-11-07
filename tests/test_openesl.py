@@ -576,6 +576,30 @@ async def test_tag_on_two_aps(hass: HomeAssistant, ap, entry, caplog, entity_reg
     assert entity_registry.async_get("sensor.tag_01234567_signal").config_entry_id == entry2.entry_id
 
 
+async def test_tag_on_two_aps_second_ap_slower(hass: HomeAssistant, ap, entry) -> None:
+    """The AP that heard the tag last finishes its first poll after the other AP has
+    added the tag's entities: they still show what it says, without waiting for a poll."""
+    import asyncio
+    from unittest.mock import patch
+
+    from custom_components.openesl.coordinator import OpenEslCoordinator
+
+    first_refresh = OpenEslCoordinator.async_config_entry_first_refresh
+
+    async def slow_second(self):
+        await first_refresh(self)
+        if self.config_entry.unique_id == "openesl-9f00":
+            await asyncio.sleep(0.1)
+
+    _second_ap(hass, ap, {"ap": AP, "tags": [tag(MAC1, seen_s_ago=5, rssi=-40)]})
+    with patch.object(OpenEslCoordinator, "async_config_entry_first_refresh", slow_second):
+        await _setup(hass, entry)
+    assert hass.states.get("sensor.tag_01234567_signal").state == "-40"
+    devices = dr.async_get(hass)
+    ap2 = devices.async_get_device(identifiers={(DOMAIN, "openesl-9f00")})
+    assert devices.async_get_device(identifiers={(DOMAIN, MAC1)}).via_device_id == ap2.id
+
+
 async def test_legacy_hostname_user_flow(hass: HomeAssistant, aioclient_mock) -> None:
     """APs set up with 0.6.0 or older are all named openesl: a second one is a new entry,
     and the first keeps its address."""

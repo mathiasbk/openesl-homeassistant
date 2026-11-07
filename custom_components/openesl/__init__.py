@@ -14,11 +14,12 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.typing import ConfigType
 
 from .api import OpenEslApi
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
-from .coordinator import OpenEslConfigEntry, OpenEslCoordinator, coordinators
+from .coordinator import SIGNAL_UPDATED, OpenEslConfigEntry, OpenEslCoordinator, coordinators
 from .services import async_setup_services
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.IMAGE, Platform.SENSOR]
@@ -49,6 +50,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     # A new update interval in the options
     entry.async_on_unload(entry.add_update_listener(_reload))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # The first refresh told the other APs' tag entities before this AP and its device
+    # were set up: tell them again, so a tag this AP heard last shows what it says and
+    # hangs under it now, not only from the next poll
+    async_dispatcher_send(hass, SIGNAL_UPDATED, entry.entry_id)
     return True
 
 

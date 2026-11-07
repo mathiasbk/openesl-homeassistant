@@ -8,6 +8,8 @@ Each version has its own section. When `version` in `custom_components/openesl/m
 
 - **Screen:** each tag has an image entity that shows what the tag shows, drawn by the AP like the dashboard's **Screen** column (#10). Put it in a picture card to see what an automation sent, without going to the tag. The image is fetched only when the tag's content or drawing changed, and only when something shows it, so the AP gets no more work between changes. It is empty before the tag has content, or when the AP cannot draw it (`content_error`). While the AP is busy or does not answer, the card keeps the last image.
 
+- **Two APs:** a tag that two APs list shows the values of the AP that heard it last, and hangs under that AP, right from startup instead of after the first poll.
+
 ## 0.4.0
 
 - **Fields by name:** `fields` in `openesl.send` can be a mapping by the layout's field names (`price: "44.90"`) as well as a list in the layout's order (openESL #182). An automation then keeps showing the right text in the right place when the layout's field order changes or the tag gets another layout with the same names. A field left out is empty.
