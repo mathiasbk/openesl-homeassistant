@@ -40,6 +40,7 @@ from .const import (
     BATCH_MAX,
     BODY_MAX_BYTES,
     BODY_MAX_TOKENS,
+    DRAW_MAX_TOKENS,
     DOMAIN,
     SERVICE_DRAW,
     SERVICE_REFRESH,
@@ -324,6 +325,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
             if key in call.data:
                 body[key] = call.data[key]
 
+        if (tokens := _json_tokens(body)) > DRAW_MAX_TOKENS:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="draw_too_big",
+                translation_placeholders={"tokens": str(tokens), "max": str(DRAW_MAX_TOKENS)},
+            )
+
         results: list[dict[str, Any]] = []
         for entry_id, macs in _resolve(hass, call).items():
             entry: OpenEslConfigEntry = hass.config_entries.async_get_known_entry(entry_id)
@@ -335,7 +343,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 if err.status == 400 and OLD_AP_DRAW in err.message:
                     raise HomeAssistantError(
                         translation_domain=DOMAIN,
-                        translation_key="draw_unsupported",
+                        translation_key="draw_unsupported_partly" if results else "draw_unsupported",
                         translation_placeholders={"ap": entry.title, "done": str(len(results))},
                     ) from err
                 raise _error(err, len(results)) from err

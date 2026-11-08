@@ -255,7 +255,13 @@
       "message": "Aksesspunktet godtar ikke API-tokenet lenger."
     },
     "draw_unsupported": {
+      "message": "Aksesspunktet {ap} kan ikke tegne et design sendt med handlingen: det krever openESL AP-fastvare 0.11.0 eller nyere."
+    },
+    "draw_unsupported_partly": {
       "message": "Aksesspunktet {ap} kan ikke tegne et design sendt med handlingen: det krever openESL AP-fastvare 0.11.0 eller nyere. De første {done} taggene fikk det før det."
+    },
+    "draw_too_big": {
+      "message": "Designet har {tokens} JSON-verdier, flere enn aksesspunktet leser i én forespørsel ({max}). Gjør det mindre, eller last det opp som en layoutfil og send feltene med openesl.send."
     },
     "cannot_connect": {
       "message": "Ingen svar fra aksesspunktet: {error}"

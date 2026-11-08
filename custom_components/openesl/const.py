@@ -18,6 +18,8 @@ BATCH_MAX = 50
 # with 14 or more fields pass the token limit, so batches are also cut by these (with a margin)
 BODY_MAX_TOKENS = 1024 - 3 - 16
 BODY_MAX_BYTES = 24576 - 64 - 512
+# PUT /api/tags/{mac}/draw: the AP reads the whole body as at most this many JSON values
+DRAW_MAX_TOKENS = 1024
 
 ATTR_MAC = "mac"
 ATTR_LAYOUT = "layout"

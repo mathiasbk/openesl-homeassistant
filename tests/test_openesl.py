@@ -868,3 +868,24 @@ def test_tag_model_names() -> None:
     assert tag_model({"model": "2.9-bwr"}) == '2.9" red tag (experimental)'
     assert tag_model({"model": None}) == "Tag"
     assert tag_model({}) == "Tag"
+
+
+async def test_draw_old_ap_partly(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    layout = {"fields": ["a"], "elements": []}
+    ap.put(f"{URL}/api/tags/{MAC1}/draw", json={"mac": MAC1, "content_id": 7, "changed": True, "pending": True})
+    ap.put(f"{URL}/api/tags/{MAC2}/draw", status=400, json={"error": "mac must be 16 hex digits"})
+    with pytest.raises(HomeAssistantError) as err:
+        await hass.services.async_call(DOMAIN, "draw", {"mac": [MAC1, MAC2], "layout": layout}, blocking=True)
+    assert err.value.translation_key == "draw_unsupported_partly"
+    assert err.value.translation_placeholders["done"] == "1"
+
+
+async def test_draw_too_big(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    # more JSON values than the AP reads in one request: refused before it is sent
+    layout = {"fields": ["a"], "elements": [{"type": "rect", "x": i, "y": 0, "w": 1, "h": 1} for i in range(250)]}
+    with pytest.raises(ServiceValidationError) as err:
+        await hass.services.async_call(DOMAIN, "draw", {"mac": MAC1, "layout": layout}, blocking=True)
+    assert err.value.translation_key == "draw_too_big"
+    assert not _sent(ap, "PUT", f"/api/tags/{MAC1}/draw")

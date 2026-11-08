@@ -162,7 +162,9 @@
     "fields_by_name_unsupported_partly": { "message": "The access point {ap} takes the fields as a list only: fields by name need openESL AP firmware newer than 0.9.2. The first {done} tags, on other access points, got the content before that." },
     "failed_partly": { "message": "It failed ({error}). The first {done} tags got the content before that." },
     "auth": { "message": "The access point no longer takes the API token." },
-    "draw_unsupported": { "message": "The access point {ap} cannot draw a design sent with the action: that needs openESL AP firmware 0.11.0 or newer. The first {done} tags got it before that." },
+    "draw_unsupported": { "message": "The access point {ap} cannot draw a design sent with the action: that needs openESL AP firmware 0.11.0 or newer." },
+    "draw_unsupported_partly": { "message": "The access point {ap} cannot draw a design sent with the action: that needs openESL AP firmware 0.11.0 or newer. The first {done} tags got it before that." },
+    "draw_too_big": { "message": "The design has {tokens} JSON values, more than the access point reads in one request ({max}). Make it smaller, or upload it as a layout file and send the fields with openesl.send." },
     "cannot_connect": { "message": "No answer from the access point: {error}" },
     "path_not_allowed": { "message": "Home Assistant may not read {path}: add its folder to allowlist_external_dirs." },
     "cannot_read": { "message": "Could not read {path}: {error}" }
