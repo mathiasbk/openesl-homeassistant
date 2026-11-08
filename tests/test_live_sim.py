@@ -174,4 +174,30 @@ async def test_live(hass: HomeAssistant, tmp_path, ap_url) -> None:
     assert reply["tags"][0]["changed"] is True
     await _wait_shown(hass, f"binary_sensor.{name}_update_pending")
 
+    # openesl.draw (openESL #375, AP firmware 0.11.0): a one-off design. The same design again
+    # is the same picture, which the AP does not send again. An older checkout's AP gives the
+    # integration's own error.
+    design = {
+        "fields": ["room"],
+        "elements": [
+            {"type": "rect", "x": 0, "y": 0, "w": 200, "h": 30, "color": "black"},
+            {"type": "text", "field": "room", "x": 4, "y": 0, "w": 192, "h": 30, "fonts": ["medium"],
+             "valign": "middle", "color": "white"},
+            {"type": "ellipse", "x": 8, "y": 40, "w": 60, "h": 60, "border": 3},
+        ],
+    }
+    data = {"mac": SIM_MAC, "layout": design, "fields": {"room": "Live test"}}
+    if os.path.exists(os.path.join(ROOT, "ap", "components", "esl_core", "esl_api_draw.c")):
+        reply = await hass.services.async_call(DOMAIN, "draw", data, blocking=True, return_response=True)
+        assert reply["tags"][0]["changed"] is True, reply
+        await _wait_shown(hass, f"binary_sensor.{name}_update_pending")
+        again = await hass.services.async_call(DOMAIN, "draw", data, blocking=True, return_response=True)
+        assert again["tags"][0]["changed"] is False, again
+        # the Screen entity shows the design
+        assert (await screen.async_image())[:8] == b"\x89PNG\r\n\x1a\n"
+    else:
+        with pytest.raises(HomeAssistantError) as err:
+            await hass.services.async_call(DOMAIN, "draw", data, blocking=True)
+        assert err.value.translation_key == "draw_unsupported"
+
     assert await hass.config_entries.async_unload(entry.entry_id)
