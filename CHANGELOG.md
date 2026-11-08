@@ -2,7 +2,7 @@
 
 Each version has its own section. When `version` in `custom_components/openesl/manifest.json` changes on `main`, the release workflow tags `v<version>` and makes the GitHub release with that section as its text, so HACS offers it. A section always says how to upgrade.
 
-## Unreleased
+## 0.5.0
 
 - **Draw:** the new action `openesl.draw` puts a design made for the moment on tags, without uploading a layout file first: one layout as in an openESL layout file, with circles, triangles, text, icons and codes, and the fields' text. The AP draws it once and keeps it as the tag's picture. Needs openESL AP firmware 0.11.0 or newer (openESL #375); an older AP gets a message that names the firmware needed.
 
@@ -12,7 +12,11 @@ Each version has its own section. When `version` in `custom_components/openesl/m
 
 - **Two APs:** a tag that two APs list shows the values of the AP that heard it last, and hangs under that AP, right from startup instead of after the first poll.
 
-- **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy. (#12).
+- **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy (#12).
+
+### Upgrading
+
+Update in HACS and restart Home Assistant; nothing to set up, and existing automations keep working. The tag image entities appear by themselves. `openesl.draw` needs openESL AP firmware 0.11.0 or newer; everything else works with older APs too. Order: either first, but update the AP to 0.11.0 before using `openesl.draw`.
 
 ## 0.4.0
 
