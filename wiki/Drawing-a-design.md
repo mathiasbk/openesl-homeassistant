@@ -48,4 +48,4 @@ entity: image.meeting_room_2_screen
 show_state: false
 ```
 
-The AP draws the image only while something shows it, and only again after the tag's content changed, so it costs the AP nothing between changes. It is empty before the tag has any content, or when the AP cannot draw it (the tag's **Problem** is on, with "content error" in `problems`). While the AP is busy, the card keeps the last image. The Screen entity works with every openESL AP from firmware 0.5.0.
+The AP draws the image only while something shows it, and only again after the tag's content changed, so it costs the AP nothing between changes. It is empty before the tag has any content, or when the AP cannot draw it (the tag's **Problem** is on, with `content_error` in `problems`). While the AP is busy, the card keeps the last image. The Screen entity works with every openESL AP from firmware 0.5.0.
