@@ -2,17 +2,21 @@
 
 Each version has its own section. When `version` in `custom_components/openesl/manifest.json` changes on `main`, the release workflow tags `v<version>` and makes the GitHub release with that section as its text, so HACS offers it. A section always says how to upgrade.
 
-## Unreleased
+## 0.5.0
 
-- **Draw:** the new action `openesl.draw` puts a design made for the moment on tags, without uploading a layout file first: one layout as in an openESL layout file, with circles, triangles, text, icons and codes, and the fields' text. The AP draws it once and keeps it as the tag's picture. Needs openESL AP firmware 0.11.0 or newer (openESL #375); an older AP gets a message that names the firmware needed.
+- **Draw:** the new action `openesl.draw` puts a design made for the moment on tags, without uploading a layout file first: one layout as in an openESL layout file, with circles, triangles, text, icons and codes, and the fields' text. The AP draws it once and keeps it as the tag's picture. Needs openESL AP firmware 0.11.0 or newer (openESL #375); an older AP gets a message that names the firmware needed (#25).
 
 - **Download diagnostics:** the AP's and each tag's device page (⋮ → **Download diagnostics**) give a file to attach to a bug report: the integration's version, the AP's firmware, health and WiFi, and for a tag its row and its content details from the AP (#17). The token, the AP's address and IP, WiFi names and the tags' field text are removed. If the AP cannot answer for the tag, the file says why instead of failing.
 
-- **Screen:** each tag has an image entity that shows what the tag shows, drawn by the AP like the dashboard's **Screen** column (#10). Put it in a picture card to see what an automation sent, without going to the tag. The image is fetched only when the tag's content or drawing changed, and only when something shows it, so the AP gets no more work between changes. It is empty before the tag has content, or when the AP cannot draw it (`content_error`). While the AP is busy or does not answer, the card keeps the last image.
+- **Screen:** each tag has an image entity that shows what the tag shows, drawn by the AP like the dashboard's **Screen** column (#10). Put it in a picture card to see what an automation sent, without going to the tag. The image is fetched only when the tag's content or drawing changed, and only when something shows it, so the AP gets no more work between changes. It is empty before the tag has content, or when the AP cannot draw it (`content_error`). While the AP is busy or does not answer, the card keeps the last image (#23).
 
-- **Two APs:** a tag that two APs list shows the values of the AP that heard it last, and hangs under that AP, right from startup instead of after the first poll.
+- **Two APs:** a tag that two APs list shows the values of the AP that heard it last, and hangs under that AP, right from startup instead of after the first poll (#19).
 
-- **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy. (#12).
+- **Install button:** the README and the wiki's Getting started have a button that opens the integration in your HACS, so there is no URL to copy (#12).
+
+### Upgrading
+
+Update in HACS and restart Home Assistant; nothing to set up, and existing automations keep working. The tag image entities appear by themselves. `openesl.draw` needs openESL AP firmware 0.11.0 or newer and the Screen image entity 0.5.0 or newer; everything else works with older APs too. Order: either first, but update the AP to 0.11.0 before using `openesl.draw`.
 
 ## 0.4.0
 
