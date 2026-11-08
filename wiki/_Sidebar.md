@@ -3,6 +3,7 @@
 **Using it**
 - [Getting started](Getting-started)
 - [Sending text](Sending-text)
+- [Drawing a design](Drawing-a-design)
 
 **Examples**
 - [Calendar on a tag](Calendar)

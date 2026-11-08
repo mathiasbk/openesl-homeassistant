@@ -76,3 +76,5 @@ data:
 ## Pictures
 
 `openesl.send_image` shows a PNG of exactly the tag's screen size (296 x 128 for the 2.9" and the experimental 2.9" red, 200 x 200 for the 1.54"). See the [README](https://github.com/mathiasbk/openesl-homeassistant/blob/main/README.md#actions).
+
+For a design with boxes, circles and text that is drawn by the AP without a layout file, see [Drawing a design](Drawing-a-design). Each tag's **Screen** entity shows what it got.

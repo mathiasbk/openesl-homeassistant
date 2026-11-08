@@ -8,6 +8,7 @@ This wiki is the how-to guide: setting it up, and automations ready to copy. The
 
 1. [Getting started](Getting-started): install with HACS, add the AP, and send the first text from Developer tools.
 2. [Sending text](Sending-text): layouts, fields, the text limit, and how to keep the tags' batteries happy.
+3. [Drawing a design](Drawing-a-design): a one-off design with boxes, circles and text, and the Screen entity that shows what a tag shows.
 
 ## Examples
 
