@@ -4,6 +4,8 @@ Each version has its own section. When `version` in `custom_components/openesl/m
 
 ## Unreleased
 
+- **Draw:** the new action `openesl.draw` puts a design made for the moment on tags, without uploading a layout file first: one layout as in an openESL layout file, with circles, triangles, text, icons and codes, and the fields' text. The AP draws it once and keeps it as the tag's picture. Needs openESL AP firmware 0.11.0 or newer (openESL #375); an older AP gets a message that names the firmware needed.
+
 - **Download diagnostics:** the AP's and each tag's device page (⋮ → **Download diagnostics**) give a file to attach to a bug report: the integration's version, the AP's firmware, health and WiFi, and for a tag its row and its content details from the AP (#17). The token, the AP's address and IP, WiFi names and the tags' field text are removed. If the AP cannot answer for the tag, the file says why instead of failing.
 
 - **Screen:** each tag has an image entity that shows what the tag shows, drawn by the AP like the dashboard's **Screen** column (#10). Put it in a picture card to see what an automation sent, without going to the tag. The image is fetched only when the tag's content or drawing changed, and only when something shows it, so the AP gets no more work between changes. It is empty before the tag has content, or when the AP cannot draw it (`content_error`). While the AP is busy or does not answer, the card keeps the last image.

@@ -131,6 +131,18 @@
         "config_entry_id": { "name": "Access point", "description": "With more than one AP: the one a MAC it does not list yet goes to." }
       }
     },
+    "draw": {
+      "name": "Draw",
+      "description": "Draws a design made for this moment on tags, without uploading a layout file first: one layout as in an openESL layout file, with its icons and the fields' text. The AP draws it once and keeps it as the tag's picture, so dates in it are not redrawn every day. Needs openESL AP firmware 0.11.0 or newer.",
+      "fields": {
+        "device_id": { "name": "Tags", "description": "The tags to draw on." },
+        "mac": { "name": "MAC", "description": "Tags by their 16-digit MAC instead." },
+        "layout": { "name": "Layout", "description": "One layout as in a layout file: the names of its fields and its elements (text, rect, line, ellipse, polygon, icon, barcode, qr)." },
+        "icons": { "name": "Icons", "description": "The icons the layout draws, by name, as in a layout file." },
+        "fields": { "name": "Fields", "description": "The fields' text: a list in the layout's order, or a mapping by field name." },
+        "config_entry_id": { "name": "Access point", "description": "With more than one AP: the one a MAC it does not list yet goes to." }
+      }
+    },
     "refresh": {
       "name": "Refresh",
       "description": "Reads the tags from the AP now instead of at the next minute.",
@@ -150,6 +162,9 @@
     "fields_by_name_unsupported_partly": { "message": "The access point {ap} takes the fields as a list only: fields by name need openESL AP firmware newer than 0.9.2. The first {done} tags, on other access points, got the content before that." },
     "failed_partly": { "message": "It failed ({error}). The first {done} tags got the content before that." },
     "auth": { "message": "The access point no longer takes the API token." },
+    "draw_unsupported": { "message": "The access point {ap} cannot draw a design sent with the action: that needs openESL AP firmware 0.11.0 or newer." },
+    "draw_unsupported_partly": { "message": "The access point {ap} cannot draw a design sent with the action: that needs openESL AP firmware 0.11.0 or newer. The first {done} tags got it before that." },
+    "draw_too_big": { "message": "The design has {tokens} JSON values, more than the access point reads in one request ({max}). Make it smaller, or upload it as a layout file and send the fields with openesl.send." },
     "cannot_connect": { "message": "No answer from the access point: {error}" },
     "path_not_allowed": { "message": "Home Assistant may not read {path}: add its folder to allowlist_external_dirs." },
     "cannot_read": { "message": "Could not read {path}: {error}" }

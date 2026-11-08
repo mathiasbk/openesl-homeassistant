@@ -32,6 +32,7 @@ from .const import (
     ATTR_DITHER,
     ATTR_FIELDS,
     ATTR_FRAME,
+    ATTR_ICONS,
     ATTR_LAYOUT,
     ATTR_MAC,
     ATTR_PATH,
@@ -39,7 +40,9 @@ from .const import (
     BATCH_MAX,
     BODY_MAX_BYTES,
     BODY_MAX_TOKENS,
+    DRAW_MAX_TOKENS,
     DOMAIN,
+    SERVICE_DRAW,
     SERVICE_REFRESH,
     SERVICE_SEND,
     SERVICE_SEND_IMAGE,
@@ -71,6 +74,8 @@ FIELDS = vol.Any(
 
 # What an AP with 0.9.2 or older says to fields as a mapping
 OLD_AP_FIELDS = "fields must be an array of strings"
+# What an AP older than 0.11.0 says to PUT /api/tags/{mac}/draw: it reads "draw" as part of the MAC
+OLD_AP_DRAW = "mac must be 16 hex digits"
 
 
 TARGET = {
@@ -96,6 +101,16 @@ SEND_IMAGE_SCHEMA = vol.Schema(
         **TARGET,
         vol.Required(ATTR_PATH): cv.string,
         vol.Optional(ATTR_DITHER, default=False): cv.boolean,
+    }
+)
+
+DRAW_SCHEMA = vol.Schema(
+    {
+        **TARGET,
+        # One layout as in an openESL layout file: {"fields": [...], "elements": [...]}
+        vol.Required(ATTR_LAYOUT): vol.All(dict, vol.Length(min=1)),
+        vol.Optional(ATTR_ICONS): dict,
+        vol.Optional(ATTR_FIELDS): FIELDS,
     }
 )
 
@@ -304,6 +319,40 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
         return {"tags": results}
 
+    async def draw(call: ServiceCall) -> ServiceResponse:
+        body: dict[str, Any] = {"layout": call.data[ATTR_LAYOUT]}
+        for key in (ATTR_ICONS, ATTR_FIELDS):
+            if key in call.data:
+                body[key] = call.data[key]
+
+        if (tokens := _json_tokens(body)) > DRAW_MAX_TOKENS:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="draw_too_big",
+                translation_placeholders={"tokens": str(tokens), "max": str(DRAW_MAX_TOKENS)},
+            )
+
+        results: list[dict[str, Any]] = []
+        for entry_id, macs in _resolve(hass, call).items():
+            entry: OpenEslConfigEntry = hass.config_entries.async_get_known_entry(entry_id)
+            coordinator = entry.runtime_data
+            try:
+                for mac in macs:
+                    results.append(await coordinator.api.draw(mac, body))
+            except OpenEslApiError as err:
+                if err.status == 400 and OLD_AP_DRAW in err.message:
+                    raise HomeAssistantError(
+                        translation_domain=DOMAIN,
+                        translation_key="draw_unsupported_partly" if results else "draw_unsupported",
+                        translation_placeholders={"ap": entry.title, "done": str(len(results))},
+                    ) from err
+                raise _error(err, len(results)) from err
+            except OpenEslError as err:
+                raise _error(err, len(results)) from err
+            finally:
+                await coordinator.async_request_refresh()
+        return {"tags": results}
+
     async def refresh(call: ServiceCall) -> None:
         chosen = call.data.get(ATTR_CONFIG_ENTRY_ID)
         for entry in _entries(hass):
@@ -319,5 +368,8 @@ def async_setup_services(hass: HomeAssistant) -> None:
         send_image,
         SEND_IMAGE_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_DRAW, draw, DRAW_SCHEMA, supports_response=SupportsResponse.OPTIONAL
     )
     hass.services.async_register(DOMAIN, SERVICE_REFRESH, refresh, REFRESH_SCHEMA)

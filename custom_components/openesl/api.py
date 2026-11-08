@@ -128,6 +128,11 @@ class OpenEslApi:
         reply = await self._request("PUT", "/api/tags", json={"tags": rows})
         return reply["tags"]
 
+    async def draw(self, mac: str, body: dict[str, Any]) -> dict[str, Any]:
+        """PUT /api/tags/{mac}/draw (AP 0.11.0 and later): a one-off design, drawn once by the
+        AP and kept as the tag's picture. body: {"layout": {...}, "icons": {...}, "fields": ...}"""
+        return await self._request("PUT", f"/api/tags/{mac}/draw", json=body, timeout=IMAGE_TIMEOUT)
+
     async def set_image(self, mac: str, png: bytes, dither: bool = False) -> dict[str, Any]:
         """PUT /api/tags/{mac}/image with a PNG of the tag's screen size."""
         params = {"dither": "true"} if dither else None

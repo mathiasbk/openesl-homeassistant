@@ -1,6 +1,6 @@
 # OpenESL for Home Assistant
 
-The OpenESL integration puts the access point (AP) of [OpenESL](https://github.com/mathiasbk/openESL), open firmware for electronic shelf labels, and every tag into Home Assistant: each tag is a device with its battery, signal and last check-in, and the actions `openesl.send` and `openesl.send_image` put text and pictures on them, without YAML for the API or a token in `secrets.yaml`. It only uses the AP's HTTP API ([openapi.yaml](https://github.com/mathiasbk/openESL/blob/master/docs/openapi.yaml)): nothing on the AP needs to change.
+The OpenESL integration puts the access point (AP) of [OpenESL](https://github.com/mathiasbk/openESL), open firmware for electronic shelf labels, and every tag into Home Assistant: each tag is a device with its battery, signal and last check-in, and the actions `openesl.send`, `openesl.send_image` and `openesl.draw` put text, pictures and designs on them, without YAML for the API or a token in `secrets.yaml`. It only uses the AP's HTTP API ([openapi.yaml](https://github.com/mathiasbk/openESL/blob/master/docs/openapi.yaml)): nothing on the AP needs to change.
 
 **[The wiki](https://github.com/mathiasbk/openesl-homeassistant/wiki)** is the step-by-step guide, with automations ready to copy: today's calendar, a meeting room sign, bin collection, weather, room climate and low battery alerts. This README is the reference.
 
@@ -125,6 +125,28 @@ data:
   path: /config/www/tag.png
   dither: true
 ```
+
+### `openesl.draw`
+
+A design made for this moment, without uploading a layout file first: one layout as in an openESL layout file (`fields` and `elements`: text, rect, line, ellipse, polygon, icon, barcode, qr), its `icons`, and the text of its `fields` as a list or by name. The AP checks it against the tag's screen, draws it once and keeps it as the tag's picture (`PUT /api/tags/{mac}/draw`). Dates in it are filled in when it is drawn, not every day: for something that should follow the date, upload a layout file and use `openesl.send`. Needs openESL AP firmware 0.11.0 or newer; an older AP gets a message that says so.
+
+```yaml
+action: openesl.draw
+data:
+  device_id: 4f0c6a...
+  layout:
+    fields: [room, next]
+    elements:
+      - { type: rect, x: 0, y: 0, w: 296, h: 30, color: black }
+      - { type: text, field: room, x: 4, y: 0, w: 288, h: 30, fonts: [medium], valign: middle, color: white }
+      - { type: ellipse, x: 8, y: 40, w: 60, h: 60, border: 3 }
+      - { type: text, field: next, x: 80, y: 40, w: 210, h: 60, fonts: [medium, small], lines: 2 }
+  fields:
+    room: Meeting room 2
+    next: "Free until {{ states('sensor.room_2_next_meeting') }}"
+```
+
+Each call is a new picture for the tag (about 5 KB on the AP), so call it when what it shows has changed.
 
 ### `openesl.refresh`
 

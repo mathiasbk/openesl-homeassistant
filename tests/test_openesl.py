@@ -5,6 +5,7 @@ import json
 
 from freezegun.api import FrozenDateTimeFactory
 import pytest
+import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntryState
@@ -503,6 +504,43 @@ async def test_send_image(hass: HomeAssistant, ap, entry, tmp_path) -> None:
     assert any(m == "PUT" and str(u).endswith("dither=true") for m, u, _, _ in ap.mock_calls)
 
 
+async def test_draw(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    layout = {"fields": ["room"], "elements": [{"type": "ellipse", "x": 8, "y": 40, "w": 60, "h": 60, "border": 3}]}
+    ap.put(f"{URL}/api/tags/{MAC1}/draw", json={"mac": MAC1, "content_id": 7, "changed": True, "pending": True})
+    reply = await hass.services.async_call(
+        DOMAIN,
+        "draw",
+        {"mac": MAC1, "layout": layout, "icons": {"i": {"w": 8, "h": 1, "data": "/w=="}}, "fields": {"room": 2}},
+        blocking=True,
+        return_response=True,
+    )
+    assert reply["tags"][0]["content_id"] == 7
+    (body, _), = _sent(ap, "PUT", f"/api/tags/{MAC1}/draw")
+    assert body == {"layout": layout, "icons": {"i": {"w": 8, "h": 1, "data": "/w=="}}, "fields": {"room": "2"}}
+
+
+async def test_draw_refused_and_old_ap(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    layout = {"fields": ["a"], "elements": [{"type": "blob"}]}
+    ap.put(f"{URL}/api/tags/{MAC1}/draw", status=422, json={"error": "layout 0 element 0: type must be ..."})
+    with pytest.raises(HomeAssistantError, match="type must be"):
+        await hass.services.async_call(DOMAIN, "draw", {"mac": MAC1, "layout": layout}, blocking=True)
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(DOMAIN, "draw", {"mac": MAC1, "layout": {}}, blocking=True)
+
+
+async def test_draw_old_ap(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    layout = {"fields": ["a"], "elements": []}
+    # An AP before 0.11.0 reads "draw" as part of the MAC
+    ap.put(f"{URL}/api/tags/{MAC1}/draw", status=400, json={"error": "mac must be 16 hex digits"})
+    with pytest.raises(HomeAssistantError) as err:
+        await hass.services.async_call(DOMAIN, "draw", {"mac": MAC1, "layout": layout}, blocking=True)
+    assert err.value.translation_key == "draw_unsupported"
+    assert "0.11.0" in str(err.value)
+
+
 async def test_send_image_not_allowed(hass: HomeAssistant, ap, entry) -> None:
     await _setup(hass, entry)
     with pytest.raises(ServiceValidationError):
@@ -830,3 +868,24 @@ def test_tag_model_names() -> None:
     assert tag_model({"model": "2.9-bwr"}) == '2.9" red tag (experimental)'
     assert tag_model({"model": None}) == "Tag"
     assert tag_model({}) == "Tag"
+
+
+async def test_draw_old_ap_partly(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    layout = {"fields": ["a"], "elements": []}
+    ap.put(f"{URL}/api/tags/{MAC1}/draw", json={"mac": MAC1, "content_id": 7, "changed": True, "pending": True})
+    ap.put(f"{URL}/api/tags/{MAC2}/draw", status=400, json={"error": "mac must be 16 hex digits"})
+    with pytest.raises(HomeAssistantError) as err:
+        await hass.services.async_call(DOMAIN, "draw", {"mac": [MAC1, MAC2], "layout": layout}, blocking=True)
+    assert err.value.translation_key == "draw_unsupported_partly"
+    assert err.value.translation_placeholders["done"] == "1"
+
+
+async def test_draw_too_big(hass: HomeAssistant, ap, entry) -> None:
+    await _setup(hass, entry)
+    # more JSON values than the AP reads in one request: refused before it is sent
+    layout = {"fields": ["a"], "elements": [{"type": "rect", "x": i, "y": 0, "w": 1, "h": 1} for i in range(250)]}
+    with pytest.raises(ServiceValidationError) as err:
+        await hass.services.async_call(DOMAIN, "draw", {"mac": MAC1, "layout": layout}, blocking=True)
+    assert err.value.translation_key == "draw_too_big"
+    assert not _sent(ap, "PUT", f"/api/tags/{MAC1}/draw")
