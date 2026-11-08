@@ -188,13 +188,16 @@ async def test_live(hass: HomeAssistant, tmp_path, ap_url) -> None:
     }
     data = {"mac": SIM_MAC, "layout": design, "fields": {"room": "Live test"}}
     if os.path.exists(os.path.join(ROOT, "ap", "components", "esl_core", "esl_api_draw.c")):
+        before = await screen.async_image()
         reply = await hass.services.async_call(DOMAIN, "draw", data, blocking=True, return_response=True)
         assert reply["tags"][0]["changed"] is True, reply
         await _wait_shown(hass, f"binary_sensor.{name}_update_pending")
         again = await hass.services.async_call(DOMAIN, "draw", data, blocking=True, return_response=True)
         assert again["tags"][0]["changed"] is False, again
-        # the Screen entity shows the design
-        assert (await screen.async_image())[:8] == b"\x89PNG\r\n\x1a\n"
+        # the Screen entity now shows the design, not the picture sent before it
+        after = await screen.async_image()
+        assert after[:8] == b"\x89PNG\r\n\x1a\n"
+        assert after != before
     else:
         with pytest.raises(HomeAssistantError) as err:
             await hass.services.async_call(DOMAIN, "draw", data, blocking=True)
