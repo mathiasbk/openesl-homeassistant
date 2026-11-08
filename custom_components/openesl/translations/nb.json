@@ -185,6 +185,36 @@
         }
       }
     },
+    "draw": {
+      "name": "Tegn",
+      "description": "Tegner et design laget for akkurat nå på tagger, uten å laste opp en layoutfil først: én layout som i en openESL-layoutfil, med ikonene og teksten i feltene. AP-en tegner det én gang og tar vare på det som taggens bilde, så datoer i det tegnes ikke på nytt hver dag. Krever openESL AP-fastvare 0.11.0 eller nyere.",
+      "fields": {
+        "device_id": {
+          "name": "Tagger",
+          "description": "Taggene det skal tegnes på."
+        },
+        "mac": {
+          "name": "MAC",
+          "description": "Tagger etter 16-sifret MAC i stedet."
+        },
+        "layout": {
+          "name": "Layout",
+          "description": "Én layout som i en layoutfil: navnene på feltene og elementene (text, rect, line, ellipse, polygon, icon, barcode, qr)."
+        },
+        "icons": {
+          "name": "Ikoner",
+          "description": "Ikonene layouten tegner, etter navn, som i en layoutfil."
+        },
+        "fields": {
+          "name": "Felt",
+          "description": "Teksten i feltene: en liste i layoutens rekkefølge, eller etter feltnavn."
+        },
+        "config_entry_id": {
+          "name": "Aksesspunkt",
+          "description": "Med flere AP-er: den en MAC den ikke viser ennå skal til."
+        }
+      }
+    },
     "refresh": {
       "name": "Oppdater",
       "description": "Leser taggene fra AP-en nå i stedet for neste minutt.",
@@ -223,6 +253,9 @@
     },
     "auth": {
       "message": "Aksesspunktet godtar ikke API-tokenet lenger."
+    },
+    "draw_unsupported": {
+      "message": "Aksesspunktet {ap} kan ikke tegne et design sendt med handlingen: det krever openESL AP-fastvare 0.11.0 eller nyere. De første {done} taggene fikk det før det."
     },
     "cannot_connect": {
       "message": "Ingen svar fra aksesspunktet: {error}"
