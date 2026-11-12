@@ -20,7 +20,7 @@ from homeassistant.helpers.typing import ConfigType
 from .api import OpenEslApi
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import SIGNAL_UPDATED, OpenEslConfigEntry, OpenEslCoordinator, coordinators
-from .remote import async_setup_remote
+from .remote import async_remove_remote, async_setup_remote
 from .services import async_setup_services
 
 PLATFORMS = [Platform.BINARY_SENSOR, Platform.EVENT, Platform.IMAGE, Platform.SENSOR, Platform.SWITCH]
@@ -75,6 +75,10 @@ async def _reload(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
     coordinator = coordinators(hass).get(entry.entry_id)
     if coordinator and coordinator.update_interval != timedelta(seconds=interval):
         await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
+    await async_remove_remote(hass, entry)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> bool:

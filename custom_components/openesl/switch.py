@@ -53,8 +53,9 @@ class OpenEslRemoteListen(CoordinatorEntity[OpenEslCoordinator], SwitchEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         remote = self.coordinator.data.remote or {}
-        # hearing: the AP hears the remote now (listen, or the AP is on channel 11)
-        return {"hearing": remote.get("hearing")}
+        # hearing: the AP hears the remote now (listen, or the AP is on channel 11);
+        # webhook_status: the HTTP status of the AP's last post of a press, -1 = no answer
+        return {"hearing": remote.get("hearing"), "webhook_status": remote.get("webhook_status")}
 
     async def _set(self, listen: bool) -> None:
         try:

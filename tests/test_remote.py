@@ -122,6 +122,42 @@ async def test_another_webhook_is_left(hass: HomeAssistant, aioclient_mock, entr
     assert not _puts(aioclient_mock)
 
 
+async def test_another_home_assistant_is_left(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    _remote_ap(aioclient_mock, remote={**REMOTE, "webhook": "http://192.168.1.99:8123/api/webhook/theirs"})
+    await _setup(hass, entry)
+    assert not _puts(aioclient_mock)
+
+
+async def test_an_earlier_setup_here_is_replaced(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    _remote_ap(aioclient_mock, remote={**REMOTE, "webhook": f"{HA_URL}/api/webhook/old"})
+    await _setup(hass, entry)
+    assert _puts(aioclient_mock) == [{"webhook": f"{HA_URL}/api/webhook/{entry.data[CONF_REMOTE_WEBHOOK_ID]}"}]
+
+
+async def test_lost_webhook_given_again_at_the_next_poll(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_REMOTE_WEBHOOK_ID: "abc"})
+    url = f"{HA_URL}/api/webhook/abc"
+    _remote_ap(aioclient_mock, remote={**REMOTE, "webhook": url}, put={**REMOTE, "webhook": url})
+    await _setup(hass, entry)
+    assert not _puts(aioclient_mock)
+    # The AP forgot it (NVS erased): the next poll sees null and gives it again
+    coordinator = entry.runtime_data
+    aioclient_mock.clear_requests()
+    _remote_ap(aioclient_mock, remote=REMOTE, put={**REMOTE, "webhook": url})
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    assert _puts(aioclient_mock) == [{"webhook": url}]
+
+
+async def test_remove_takes_the_webhook_off_the_ap(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_REMOTE_WEBHOOK_ID: "abc"})
+    _remote_ap(aioclient_mock, remote={**REMOTE, "webhook": f"{HA_URL}/api/webhook/abc"})
+    await _setup(hass, entry)
+    await hass.config_entries.async_remove(entry.entry_id)
+    await hass.async_block_till_done()
+    assert _puts(aioclient_mock) == [{"webhook": None}]
+
+
 async def test_same_webhook_not_sent_again(hass: HomeAssistant, aioclient_mock, entry) -> None:
     hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_REMOTE_WEBHOOK_ID: "abc"})
     _remote_ap(aioclient_mock, remote={**REMOTE, "webhook": f"{HA_URL}/api/webhook/abc"})

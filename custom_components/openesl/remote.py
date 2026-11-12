@@ -17,14 +17,15 @@ from urllib.parse import urlsplit
 from aiohttp import web
 
 from homeassistant.components import webhook
-from homeassistant.const import CONF_DEVICE_ID
+from homeassistant.const import CONF_DEVICE_ID, CONF_HOST, CONF_TOKEN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.network import NoURLAvailableError, get_url
 
-from .api import OpenEslError
+from .api import OpenEslApi, OpenEslError
 from .const import DOMAIN
 from .coordinator import OpenEslConfigEntry, OpenEslCoordinator
 from .entity import ap_identifier
@@ -86,9 +87,13 @@ def webhook_url(hass: HomeAssistant, webhook_id: str) -> str | None:
     return url if len(url) <= WEBHOOK_URL_MAX else None
 
 
-def is_ours(url: str | None) -> bool:
-    """A webhook the AP may have from Home Assistant (this or an earlier setup)."""
-    return not url or "/api/webhook/" in url
+def is_ours(current: str | None, url: str) -> bool:
+    """The AP's webhook may be replaced by url: it has none, or one of this Home Assistant's
+    (the same host and port, from this or an earlier setup). Another Home Assistant's, or any
+    other webhook, is left as it is."""
+    if not current:
+        return True
+    return "/api/webhook/" in current and urlsplit(current).netloc == urlsplit(url).netloc
 
 
 async def async_setup_remote(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
@@ -133,23 +138,54 @@ async def async_setup_remote(hass: HomeAssistant, entry: OpenEslConfigEntry) -> 
     entry.async_on_unload(lambda: webhook.async_unregister(hass, webhook_id))
 
     url = webhook_url(hass, webhook_id)
-    current = remote.get("webhook")
     if url is None:
         _LOGGER.warning(
             "The SoluM remote on %s cannot reach Home Assistant: the AP needs a plain "
             "http:// address of Home Assistant with an IP or a DNS name (not .local)", entry.title,
         )
-    elif current != url and is_ours(current):
+        return
+    giving = False
+
+    async def give(remote: dict[str, Any]) -> None:
+        nonlocal giving
+        current = remote.get("webhook")
+        if current == url:
+            return
+        if not is_ours(current, url):
+            _LOGGER.info("%s posts the remote's presses to another webhook, which is left as it is", entry.title)
+            return
+        giving = True
         try:
-            remote = await coordinator.api.set_remote(webhook=url)
+            coordinator.data.remote = await coordinator.api.set_remote(webhook=url)
         except OpenEslError as err:
             _LOGGER.warning("Could not give %s the remote's webhook: %s", entry.title, err)
-        else:
-            coordinator.data.remote = remote
-    elif current != url:
-        _LOGGER.info(
-            "%s posts the remote's presses to another webhook, which is left as it is", entry.title
-        )
+        finally:
+            giving = False
+
+    await give(remote)
+
+    @callback
+    def check_webhook() -> None:
+        # An AP that lost its webhook (NVS erased, a backup restored) gets it back at the next poll
+        remote = coordinator.data.remote if coordinator.data else None
+        if remote is not None and not remote.get("webhook") and not giving:
+            entry.async_create_background_task(hass, give(remote), "openesl remote webhook")
+
+    entry.async_on_unload(coordinator.async_add_listener(check_webhook))
+
+
+async def async_remove_remote(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
+    """The entry is deleted: the AP stops posting to its webhook, if it posts to ours."""
+    webhook_id = entry.data.get(CONF_REMOTE_WEBHOOK_ID)
+    if not webhook_id:
+        return
+    api = OpenEslApi(async_get_clientsession(hass), entry.data[CONF_HOST], entry.data[CONF_TOKEN])
+    try:
+        remote = await api.get_remote()
+        if remote and webhook_id in (remote.get("webhook") or ""):
+            await api.set_remote(webhook=None)
+    except OpenEslError as err:
+        _LOGGER.info("Could not take the remote's webhook off %s: %s", entry.title, err)
 
 
 @callback
