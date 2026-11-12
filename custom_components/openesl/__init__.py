@@ -53,6 +53,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     # The SoluM remote's presses come through a webhook (AP firmware after 0.11.0)
     await async_setup_remote(hass, entry)
+    if coordinator.data.remote is None:
+        # The AP gets firmware with /api/remote while Home Assistant runs (an OTA update):
+        # set up again, so the remote's device, entities and webhook come without a restart
+        @callback
+        def _remote_appeared() -> None:
+            if coordinator.data.remote is not None:
+                hass.config_entries.async_schedule_reload(entry.entry_id)
+
+        entry.async_on_unload(coordinator.async_add_listener(_remote_appeared))
     # The first refresh told the other APs' tag entities before this AP and its device
     # were set up: tell them again, so a tag this AP heard last shows what it says and
     # hangs under it now, not only from the next poll

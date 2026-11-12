@@ -177,3 +177,64 @@ async def test_device_triggers(hass: HomeAssistant, aioclient_mock, entry, hass_
     await client.post(path, json={"event": "remote", "button": "w", "id": 2, "boot": 1})
     await hass.async_block_till_done()
     assert len(calls) == 1
+
+
+async def test_unload_removes_the_webhook(hass: HomeAssistant, aioclient_mock, entry, hass_client_no_auth) -> None:
+    _remote_ap(aioclient_mock)
+    await _setup(hass, entry)
+    events = async_capture_events(hass, EVENT_REMOTE_BUTTON)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    client = await hass_client_no_auth()
+    path = f"/api/webhook/{entry.data[CONF_REMOTE_WEBHOOK_ID]}"
+    # Home Assistant answers 200 for a webhook it does not know, but nothing fires
+    await client.post(path, json={"event": "remote", "button": "w", "id": 1, "boot": 1})
+    await hass.async_block_till_done()
+    assert not events
+    # Set up again: the same webhook, registered again
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    await client.post(path, json={"event": "remote", "button": "w", "id": 1, "boot": 1})
+    await hass.async_block_till_done()
+    assert len(events) == 1
+
+
+async def test_long_internal_url_falls_back_to_the_ip(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    """An internal URL too long for the AP (127 characters with the path): the IP instead."""
+    _remote_ap(aioclient_mock)
+    await async_process_ha_core_config(hass, {"internal_url": f"http://{'h' * 60}.example.org:8123"})
+    assert await async_setup_component(hass, "http", {})
+    api = hass.config.api
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    webhook_id = entry.data[CONF_REMOTE_WEBHOOK_ID]
+    assert _puts(aioclient_mock) == [{"webhook": f"http://{api.local_ip}:{api.port}/api/webhook/{webhook_id}"}]
+
+
+async def test_remote_appears_after_an_ap_update(hass: HomeAssistant, aioclient_mock, entry) -> None:
+    """The AP answered 404 at setup and /api/remote after an OTA update: set up again."""
+    aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
+    aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
+    aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
+    await _setup(hass, entry)
+    assert _remote_device(hass) is None
+    aioclient_mock.clear_requests()
+    _remote_ap(aioclient_mock)
+    await entry.runtime_data.async_refresh()
+    await hass.async_block_till_done()
+    assert _remote_device(hass) is not None
+    assert hass.states.get("event.solum_remote_button") is not None
+    assert len(_puts(aioclient_mock)) == 1
+
+
+async def test_press_without_id_is_never_a_repeat(hass: HomeAssistant, aioclient_mock, entry, hass_client_no_auth) -> None:
+    _remote_ap(aioclient_mock)
+    await _setup(hass, entry)
+    events = async_capture_events(hass, EVENT_REMOTE_BUTTON)
+    client = await hass_client_no_auth()
+    path = f"/api/webhook/{entry.data[CONF_REMOTE_WEBHOOK_ID]}"
+    for _ in range(2):
+        assert (await client.post(path, json={"event": "remote", "button": "w"})).status == 200
+    await hass.async_block_till_done()
+    assert len(events) == 2

@@ -76,7 +76,9 @@ def webhook_url(hass: HomeAssistant, webhook_id: str) -> str | None:
         parts = urlsplit(base)
         if parts.scheme == "http" and parts.hostname and not parts.hostname.endswith(".local"):
             url = base.rstrip("/") + path
-            return url if len(url) <= WEBHOOK_URL_MAX else None
+            if len(url) <= WEBHOOK_URL_MAX:
+                return url
+            # Too long for the AP: Home Assistant's own address below is shorter
     api = hass.config.api
     if api is None or api.use_ssl or not api.local_ip:
         return None
@@ -118,7 +120,8 @@ async def async_setup_remote(hass: HomeAssistant, entry: OpenEslConfigEntry) -> 
             return web.Response(status=400)
         button = body["button"]
         key = (body.get("boot"), body.get("id"))
-        if key not in seen:
+        if key[1] is None or key not in seen:
+            # Without an id a press cannot be told from a resent one: taken as new
             seen.append(key)
             fire_press(hass, entry, button, body)
         return web.Response(status=200)
