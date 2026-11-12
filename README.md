@@ -31,7 +31,7 @@ Each AP is known by its name. An AP set up with firmware 0.6.0 or older is named
 
 ## What it shows
 
-Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /api/wifi` from the AP, and a tag's screen when it changed and is looked at. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
+Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health`, `GET /api/wifi` and `GET /api/remote` from the AP, and a tag's screen when it changed and is looked at. A new tag becomes a device as soon as the AP lists it, named after the first 8 digits of the number under its barcode (`Tag 02066346`); rename it to where it hangs.
 
 | Device | Entity | From the AP |
 |---|---|---|
@@ -45,11 +45,27 @@ Every 120 s (the options) it reads `GET /api/tags`, `GET /api/health` and `GET /
 | Tag | Poll interval, Lost polls | diagnostic, off until you turn them on |
 | AP | Tags, Tags with problems | how many tags the AP knows, and how many `/api/health` lists |
 | AP | Firmware, Started, WiFi signal, Radio channel | diagnostic; WiFi signal is the AP's own (the first thing to look at when it answers slowly) |
+| SoluM remote | Button | an event entity: `event_type` is `w`, `left` or `right` at each press of a SoluM ESL remote ([below](#solum-remote)) |
+| SoluM remote | Listen on channel 11 | config: the AP's radio visits the remote's channel while the AP runs on another one |
 | AP | Radio, Radio 1-3 | connectivity, diagnostic: the AP has contact with its radio. Only on an ESP32-S3 AP, whose radio is an ESP32-C6 on the cable (openESL firmware after 0.9.2) or over WiFi; Radio 1-3 when it has several radios over WiFi. Attributes `via` (`uart`: on the cable, `wifi`), `lost`, `lost_s`, `id`, `channel` |
 
 **Lost radio:** when the S3 has had no contact with a C6 for 30 s (`radio_problems` in `/api/health`, openESL firmware after 0.9.2), a repair shows under Settings → System → Repairs: "openesl-xxxx: radio is not answering", with what to check. Until it answers again its tags hear nothing from the AP. The repair goes away by itself when the radio is back. To be told on your phone, automate on the Radio entity turning off, for example for 1 minute.
 
 **Screen:** the AP draws the image only when something asks for it (a card with the image open), and only again once the tag's content or its drawing changes, so the AP has no more work between changes. When the AP cannot draw it just then (busy, out of memory, no answer), the card keeps the last image until the next try. Put it in a **Picture entity** card (or **Picture glance**) to see on the dashboard what an automation sent, and the tag's **Update pending** next to it to see whether the tag shows it yet. A tag that draws its content itself (not from the AP's image) shows the same pixels; after a change to a layout in the AP's layout file, such a tag's image follows at its next new content.
+
+<a id="solum-remote"></a>**SoluM remote:** a SoluM ESL remote (SLT-RC004, buttons W, left and right) is a wireless button for automations. An AP whose own radio is a C6 or C5, with openESL firmware after 0.11.0, hears it on 802.15.4 channel 11 and gets a device **SoluM remote** here. The integration registers a webhook and gives its address to the AP, so each press arrives at once, with nothing polling: it fires the event `openesl_remote_button` (`button`, `device_id`, `ap`, `id`), moves the **Button** event entity, and runs the device triggers "W pressed", "Left pressed" and "Right pressed" (Automation → Device → SoluM remote). The AP must hear channel 11: move the AP to channel 11, or turn on **Listen on channel 11**, which costs the tags some battery. The AP reaches Home Assistant over plain HTTP at its internal URL (or its IP when that is a `.local` name); behind HTTPS only it cannot post. An AP that already posts its presses to another webhook keeps it. All SoluM remotes look the same to the AP, and the frames are not encrypted: use it for lights and scenes, not locks. More in [openESL's wiki](https://github.com/mathiasbk/openESL/wiki/SoluM-remote).
+
+```yaml
+triggers:
+  - trigger: event
+    event_type: openesl_remote_button
+    event_data:
+      button: w
+actions:
+  - action: light.toggle
+    target:
+      entity_id: light.hallway
+```
 
 A tag the AP no longer lists turns unavailable; delete its device from its page (⋮ → Delete) when it is gone for good. A tag moved to another AP stays in the old AP's table for a while: with both APs in Home Assistant it has one device, which shows what the AP that heard it last says, and the actions send to that AP.
 

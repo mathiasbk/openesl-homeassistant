@@ -2,6 +2,14 @@
 
 Each version has its own section. When `version` in `custom_components/openesl/manifest.json` changes on `main`, the release workflow tags `v<version>` and makes the GitHub release with that section as its text, so HACS offers it. A section always says how to upgrade.
 
+## 0.6.0
+
+- **SoluM remote as a button:** a SoluM ESL remote (SLT-RC004, buttons W, left and right) becomes a device **SoluM remote** under its AP, with a **Button** event entity, a **Listen on channel 11** switch and the device triggers "W pressed", "Left pressed" and "Right pressed". Each press also fires the event `openesl_remote_button`. The integration registers a webhook and gives the AP its address, so a press arrives within a fraction of a second, with nothing polling. Needs an AP whose own radio is a C6 or C5, with openESL firmware after 0.11.0 (`/api/remote`); other APs get no remote device.
+
+### Upgrading
+
+Update in HACS and restart Home Assistant; nothing else changes for existing setups. The remote device appears once the AP has firmware with `/api/remote`; reload the integration after updating the AP. Order: either first. The AP must reach Home Assistant over plain HTTP (its internal URL, or its IP when the internal URL is a `.local` name).
+
 ## 0.5.0
 
 - **Draw:** the new action `openesl.draw` puts a design made for the moment on tags, without uploading a layout file first: one layout as in an openESL layout file, with circles, triangles, text, icons and codes, and the fields' text. The AP draws it once and keeps it as the tag's picture. Needs openESL AP firmware 0.11.0 or newer (openESL #375); an older AP gets a message that names the firmware needed (#25).

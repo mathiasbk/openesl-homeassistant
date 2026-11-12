@@ -145,6 +145,7 @@ async def test_screen_fetched_once_until_it_changes(
     ap.get(f"{URL}/api/tags", json={"ap": AP, "tags": [tag(MAC1, content_id=7, image_id=8, pending=True), TAGS["tags"][1]]})
     ap.get(f"{URL}/api/health", json=HEALTH)
     ap.get(f"{URL}/api/wifi", json=WIFI)
+    ap.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     ap.get(f"{URL}/api/tags/{MAC1}/image", json=_reply(MAC1, new, content_id=7, image_id=8))
     freezer.tick(120)
     async_fire_time_changed(hass)
@@ -185,6 +186,7 @@ async def test_screen_new_tag_without_content(hass: HomeAssistant, aioclient_moc
     aioclient_mock.get(f"{URL}/api/tags", json={"ap": AP, "tags": [tag(MAC2, content_id=0, shown_content_id=0, image_id=None, shown_image_id=0)]})
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     assert hass.states.get(SCREEN2).state == "unknown"
     client = await hass_client_no_auth()
@@ -197,6 +199,7 @@ def _poll(aioclient_mock, *tags):
     aioclient_mock.get(f"{URL}/api/tags", json={"ap": AP, "tags": list(tags)})
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
 
 
 async def _refresh(hass):

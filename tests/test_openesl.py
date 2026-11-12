@@ -99,6 +99,7 @@ async def test_zeroconf_flow(hass: HomeAssistant, aioclient_mock) -> None:
     url = "http://192.168.0.170"
     aioclient_mock.get(f"{url}/api/tags", json=TAGS)
     aioclient_mock.get(f"{url}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{url}/api/remote", status=404, json={"error": "not found"})
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_ZEROCONF}, data=_zc())
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "zeroconf_confirm"
@@ -138,6 +139,7 @@ async def test_reauth(hass: HomeAssistant, aioclient_mock, entry) -> None:
     aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     result = await hass.config_entries.flow.async_configure(flows[0]["flow_id"], {"token": "new-token"})
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reauth_successful"
@@ -150,6 +152,7 @@ async def test_reconfigure_wrong_ap(hass: HomeAssistant, aioclient_mock, entry) 
     other = "http://192.168.0.50"
     aioclient_mock.get(f"{other}/api/tags", json=TAGS)
     aioclient_mock.get(f"{other}/api/wifi", json={**WIFI, "hostname": "openesl-9999"})
+    aioclient_mock.get(f"{other}/api/remote", status=404, json={"error": "not found"})
     result = await entry.start_reconfigure_flow(hass)
     result = await hass.config_entries.flow.async_configure(result["flow_id"], {"host": "192.168.0.50"})
     assert result["errors"] == {"host": "wrong_ap"}
@@ -203,6 +206,7 @@ async def test_new_tag_and_steady_last_seen(
     aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", status=404, json={"error": "not found"})
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     first = hass.states.get("sensor.tag_01234567_last_check_in").state
 
@@ -217,6 +221,7 @@ async def test_new_tag_and_steady_last_seen(
     )
     aioclient_mock.get(f"{URL}/api/health", json={**HEALTH, "problems": []})
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     # The default interval is 120 s
     freezer.tick(120)
     async_fire_time_changed(hass)
@@ -242,6 +247,7 @@ async def test_radio_lost_and_back(
                             "problems": ["radio_lost"], "lost_s": 45}],
     })
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
 
     radio = hass.states.get("binary_sensor.openesl_1a2b_radio")
@@ -260,6 +266,7 @@ async def test_radio_lost_and_back(
         **s3, "radio": {"connected": True, "via": "uart", "lost": False, "seen_s": 1, "fw": 257}}})
     aioclient_mock.get(f"{URL}/api/health", json={**HEALTH, "radio_lost": 0, "radio_problems": []})
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     freezer.tick(120)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -278,6 +285,7 @@ async def test_several_radios(
     aioclient_mock.get(f"{URL}/api/tags", json={**TAGS, "ap": {**AP, "radio": link0, "radios": [r0]}})
     aioclient_mock.get(f"{URL}/api/health", json={**HEALTH, "radio_lost": 0, "radio_problems": []})
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     assert hass.states.get("binary_sensor.openesl_1a2b_radio").attributes["id"] == "0000F0F5BDFFFE01"
     assert hass.states.get("binary_sensor.openesl_1a2b_radio_1") is None
@@ -292,6 +300,7 @@ async def test_several_radios(
         "radio_problems": [{"radio": 1, "id": r1["id"], "via": "wifi", "problems": ["radio_lost"], "lost_s": 90}],
     })
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     freezer.tick(120)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -316,6 +325,7 @@ async def test_only_changed_tags(
     aioclient_mock.get(f"{URL}/api/tags", json={**TAGS, "since": "5eed0001-1", "full": True})
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     seen2 = hass.states.get("sensor.tag_02066346_last_check_in").state
 
@@ -328,6 +338,7 @@ async def test_only_changed_tags(
     )
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     freezer.tick(120)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -351,6 +362,7 @@ async def test_only_changed_tags(
     )
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     freezer.tick(120)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()
@@ -572,6 +584,7 @@ def _second_ap(hass, aioclient_mock, tags, hostname="openesl-9f00"):
     aioclient_mock.get(f"{URL2}/api/tags", json=tags)
     aioclient_mock.get(f"{URL2}/api/health", json={**HEALTH, "problems": [], "with_problems": 0})
     aioclient_mock.get(f"{URL2}/api/wifi", json={**WIFI, "hostname": hostname})
+    aioclient_mock.get(f"{URL2}/api/remote", status=404, json={"error": "not found"})
     e = MockConfigEntry(domain=DOMAIN, unique_id=hostname, title=hostname,
                         data={"host": "192.168.0.171", "token": TOKEN})
     e.add_to_hass(hass)
@@ -593,9 +606,11 @@ async def test_tag_on_two_aps(hass: HomeAssistant, ap, entry, caplog, entity_reg
     ap.get(f"{URL}/api/tags", json=TAGS)
     ap.get(f"{URL}/api/health", json=HEALTH)
     ap.get(f"{URL}/api/wifi", json=WIFI)
+    ap.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     ap.get(f"{URL2}/api/tags", json={"ap": AP, "tags": [tag(MAC1, seen_s_ago=5, rssi=-41)]})
     ap.get(f"{URL2}/api/health", json={**HEALTH, "problems": [], "with_problems": 0})
     ap.get(f"{URL2}/api/wifi", json={**WIFI, "hostname": "openesl-9f00"})
+    ap.get(f"{URL2}/api/remote", status=404, json={"error": "not found"})
     await hass.services.async_call(DOMAIN, "refresh", {}, blocking=True)
     await hass.async_block_till_done()
     devices = dr.async_get(hass)
@@ -644,6 +659,7 @@ async def test_legacy_hostname_user_flow(hass: HomeAssistant, aioclient_mock) ->
     for url in (URL, URL2):
         aioclient_mock.get(f"{url}/api/tags", json=TAGS)
         aioclient_mock.get(f"{url}/api/wifi", json={**WIFI, "hostname": "openesl"})
+        aioclient_mock.get(f"{url}/api/remote", status=404, json={"error": "not found"})
     for host in (HOST, "192.168.0.171"):
         result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
         result = await hass.config_entries.flow.async_configure(result["flow_id"], {"host": host, "token": TOKEN})
@@ -681,6 +697,7 @@ async def test_send_refused_after_a_batch(hass: HomeAssistant, aioclient_mock, e
     aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     calls = []
 
@@ -704,6 +721,7 @@ async def test_send_fields_by_name_old_ap_after_a_batch(hass: HomeAssistant, aio
     aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     calls = []
 
@@ -729,6 +747,7 @@ async def test_device_info_follows(hass: HomeAssistant, aioclient_mock, entry, f
     aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     await _setup(hass, entry)
     assert hass.states.get("sensor.openesl_1a2b_wifi_signal").state == "-58"
 
@@ -736,6 +755,7 @@ async def test_device_info_follows(hass: HomeAssistant, aioclient_mock, entry, f
     aioclient_mock.get(f"{URL}/api/tags", json={"ap": {**AP, "fw": "0.9.0"}, "tags": [tag(MAC1, fw=900), TAGS["tags"][1]]})
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json={**WIFI, "rssi": -70})
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     freezer.tick(120)
     async_fire_time_changed(hass)
     await hass.async_block_till_done()

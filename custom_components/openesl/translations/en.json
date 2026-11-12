@@ -93,6 +93,24 @@
       "pending": { "name": "Update pending" },
       "radio": { "name": "Radio" },
       "radio_n": { "name": "Radio {radio}" }
+    },
+    "event": {
+      "remote_button": {
+        "name": "Button",
+        "state_attributes": {
+          "event_type": { "state": { "w": "W", "left": "Left", "right": "Right" } }
+        }
+      }
+    },
+    "switch": {
+      "remote_listen": { "name": "Listen on channel 11" }
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "w_pressed": "W pressed",
+      "left_pressed": "Left pressed",
+      "right_pressed": "Right pressed"
     }
   },
   "issues": {

@@ -1,7 +1,7 @@
 """OpenESL: price tags and signs on an OpenESL access point (https://github.com/mathiasbk/openESL).
 
 Uses only the AP's HTTP API (docs/openapi.yaml): GET /api/tags and /api/health once a
-minute for the sensors, GET /api/tags/{mac}/image when a tag's
+minute for the sensors, a webhook for the presses of a SoluM remote (remote.py), GET /api/tags/{mac}/image when a tag's
 screen changed and is looked at, PUT /api/tags and /api/tags/{mac}/image for the actions.
 """
 
@@ -20,9 +20,10 @@ from homeassistant.helpers.typing import ConfigType
 from .api import OpenEslApi
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import SIGNAL_UPDATED, OpenEslConfigEntry, OpenEslCoordinator, coordinators
+from .remote import async_setup_remote
 from .services import async_setup_services
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.IMAGE, Platform.SENSOR]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.EVENT, Platform.IMAGE, Platform.SENSOR, Platform.SWITCH]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -50,6 +51,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     # A new update interval in the options
     entry.async_on_unload(entry.add_update_listener(_reload))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # The SoluM remote's presses come through a webhook (AP firmware after 0.11.0)
+    await async_setup_remote(hass, entry)
     # The first refresh told the other APs' tag entities before this AP and its device
     # were set up: tell them again, so a tag this AP heard last shows what it says and
     # hangs under it now, not only from the next poll
@@ -77,6 +80,7 @@ async def async_remove_config_entry_device(
     for domain, ident in device.identifiers:
         if domain == DOMAIN and (
             ident in (entry.unique_id, entry.entry_id) or ident.upper() in data.tags
+            or (ident.endswith("_remote") and data.remote is not None)
         ):
             return False
     return True

@@ -72,6 +72,9 @@ HEALTH = {
     "low_battery": 0,
     "content_error": 0,
 }
+# GET /api/remote of a C6 AP that can hear a SoluM remote (AP firmware after 0.11.0)
+REMOTE = {"channel": 11, "listen": False, "can_listen": True, "hearing": False, "webhook": None,
+          "webhook_status": None, "boot": 2817364121, "frames": 0, "presses": []}
 WIFI = {"mode": "sta", "ssid": "Hjemme", "connected": True, "ip": "192.168.0.170", "rssi": -58,
         "setup_ssid": None, "token_set": True, "hostname": "openesl-1A2B", "networks": []}
 
@@ -87,6 +90,8 @@ def ap(aioclient_mock):
     aioclient_mock.get(f"{URL}/api/tags", json=TAGS)
     aioclient_mock.get(f"{URL}/api/health", json=HEALTH)
     aioclient_mock.get(f"{URL}/api/wifi", json=WIFI)
+    # An AP that cannot hear a SoluM remote (0.11.0 and older, or an S3)
+    aioclient_mock.get(f"{URL}/api/remote", status=404, json={"error": "not found"})
     return aioclient_mock
 
 
