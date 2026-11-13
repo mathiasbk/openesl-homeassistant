@@ -16,6 +16,7 @@ from .const import DOMAIN
 # title and unique_id are the AP's hostname, or its address when it has none
 TO_REDACT = {
     "token", "host", "ssid", "setup_ssid", "ip", "fields", "content", "title", "unique_id",
+    "remote_webhook_id", "webhook",
 }
 
 
@@ -31,6 +32,7 @@ async def _base_diagnostics(
         "ap": async_redact_data(data.ap, TO_REDACT),
         "health": async_redact_data(data.health, TO_REDACT),
         "wifi": async_redact_data(data.wifi, TO_REDACT),
+        "remote": async_redact_data(data.remote, TO_REDACT) if data.remote is not None else None,
     }
 
 

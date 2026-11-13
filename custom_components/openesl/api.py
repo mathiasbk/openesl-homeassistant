@@ -19,6 +19,10 @@ LIST_TIMEOUT = aiohttp.ClientTimeout(total=60)
 IMAGE_TIMEOUT = aiohttp.ClientTimeout(total=60)
 
 
+# set_remote(webhook=...) left out
+UNCHANGED: Any = object()
+
+
 class OpenEslError(Exception):
     """The AP could not be reached or refused the request."""
 
@@ -143,3 +147,23 @@ class OpenEslApi:
             params=params,
             timeout=IMAGE_TIMEOUT,
         )
+
+    async def get_remote(self) -> dict[str, Any] | None:
+        """GET /api/remote (AP firmware after 0.11.0): the SoluM remote's settings and last
+        presses. None when the AP cannot hear a remote (404: an older AP, or an S3)."""
+        try:
+            return await self._request("GET", "/api/remote")
+        except OpenEslApiError as err:
+            if err.status == 404:
+                return None
+            raise
+
+    async def set_remote(self, *, listen: bool | None = None, webhook: Any = UNCHANGED) -> dict[str, Any]:
+        """PUT /api/remote: listen on channel 11, and where the AP posts each press
+        (webhook None or "" posts nowhere; left out: unchanged)."""
+        body: dict[str, Any] = {}
+        if listen is not None:
+            body["listen"] = listen
+        if webhook is not UNCHANGED:
+            body["webhook"] = webhook
+        return await self._request("PUT", "/api/remote", json=body)

@@ -118,6 +118,25 @@
       "radio_n": {
         "name": "Radio {radio}"
       }
+    },
+    "event": {
+      "remote_button": {
+        "name": "Knapp",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "w": "W",
+              "left": "Venstre",
+              "right": "Høyre"
+            }
+          }
+        }
+      }
+    },
+    "switch": {
+      "remote_listen": {
+        "name": "Lytt på kanal 11"
+      }
     }
   },
   "services": {
@@ -297,6 +316,13 @@
     "radio_lost_wifi": {
       "title": "{ap}: radio{radio} svarer ikke",
       "description": "Aksesspunktet {ap} (en ESP32-S3) har ikke vært koblet til denne radioen, en ESP32-C6 over WiFi, på over 30 sekunder. Til den kobler seg til igjen hører taggene dens ingenting fra AP-et: innhold og innstillinger venter.\n\nSjekk at C6-en har strøm og er på WiFi (`status` i USB-konsollen dens). Dashbordet på AP-et viser siden når. Dette forsvinner av seg selv når radioen er tilbake."
+    }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "w_pressed": "W trykket",
+      "left_pressed": "Venstre trykket",
+      "right_pressed": "Høyre trykket"
     }
   }
 }

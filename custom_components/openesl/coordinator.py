@@ -1,4 +1,4 @@
-"""Polls the AP: GET /api/tags, /api/health and /api/wifi, every scan_interval seconds.
+"""Polls the AP: GET /api/tags, /api/health, /api/wifi and /api/remote, every scan_interval seconds.
 
 GET /api/tags asks with ?since= for only the tags that changed since the last read
 (openESL #270); the others are kept from the last read, their seen_s_ago counted on
@@ -50,6 +50,8 @@ class OpenEslData:
     started: datetime | None = None
     # GET /api/wifi, {} when the AP has no WiFi (behind a bridge)
     wifi: dict[str, Any] = field(default_factory=dict)
+    # GET /api/remote (remote.py), None when the AP cannot hear a SoluM remote
+    remote: dict[str, Any] | None = None
 
 
 def coordinators(hass: HomeAssistant) -> dict[str, OpenEslCoordinator]:
@@ -117,6 +119,7 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
                 if err.status != 404:
                     raise
                 wifi = {}
+            remote = await self.api.get_remote()
         except OpenEslAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
         except OpenEslError as err:
@@ -165,6 +168,7 @@ class OpenEslCoordinator(DataUpdateCoordinator[OpenEslData]):
             last_seen=last_seen,
             started=started,
             wifi=wifi,
+            remote=remote,
         )
 
     def _radio_issues(self, lost: list[dict[str, Any]] | None, ap: dict[str, Any]) -> None:

@@ -1,7 +1,7 @@
 """OpenESL: price tags and signs on an OpenESL access point (https://github.com/mathiasbk/openESL).
 
 Uses only the AP's HTTP API (docs/openapi.yaml): GET /api/tags and /api/health once a
-minute for the sensors, GET /api/tags/{mac}/image when a tag's
+minute for the sensors, a webhook for the presses of a SoluM remote (remote.py), GET /api/tags/{mac}/image when a tag's
 screen changed and is looked at, PUT /api/tags and /api/tags/{mac}/image for the actions.
 """
 
@@ -20,9 +20,10 @@ from homeassistant.helpers.typing import ConfigType
 from .api import OpenEslApi
 from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 from .coordinator import SIGNAL_UPDATED, OpenEslConfigEntry, OpenEslCoordinator, coordinators
+from .remote import async_remove_remote, async_setup_remote
 from .services import async_setup_services
 
-PLATFORMS = [Platform.BINARY_SENSOR, Platform.IMAGE, Platform.SENSOR]
+PLATFORMS = [Platform.BINARY_SENSOR, Platform.EVENT, Platform.IMAGE, Platform.SENSOR, Platform.SWITCH]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -50,6 +51,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> b
     # A new update interval in the options
     entry.async_on_unload(entry.add_update_listener(_reload))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # The SoluM remote's presses come through a webhook (AP firmware after 0.11.0)
+    await async_setup_remote(hass, entry)
+    if coordinator.data.remote is None:
+        # The AP gets firmware with /api/remote while Home Assistant runs (an OTA update):
+        # set up again, so the remote's device, entities and webhook come without a restart
+        @callback
+        def _remote_appeared() -> None:
+            if coordinator.data.remote is not None:
+                hass.config_entries.async_schedule_reload(entry.entry_id)
+
+        entry.async_on_unload(coordinator.async_add_listener(_remote_appeared))
     # The first refresh told the other APs' tag entities before this AP and its device
     # were set up: tell them again, so a tag this AP heard last shows what it says and
     # hangs under it now, not only from the next poll
@@ -65,6 +77,10 @@ async def _reload(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
         await hass.config_entries.async_reload(entry.entry_id)
 
 
+async def async_remove_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> None:
+    await async_remove_remote(hass, entry)
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: OpenEslConfigEntry) -> bool:
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
@@ -77,6 +93,7 @@ async def async_remove_config_entry_device(
     for domain, ident in device.identifiers:
         if domain == DOMAIN and (
             ident in (entry.unique_id, entry.entry_id) or ident.upper() in data.tags
+            or (ident.endswith("_remote") and data.remote is not None)
         ):
             return False
     return True
