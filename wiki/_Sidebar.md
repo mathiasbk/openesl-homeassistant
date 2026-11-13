@@ -4,6 +4,7 @@
 - [Getting started](Getting-started)
 - [Sending text](Sending-text)
 - [Drawing a design](Drawing-a-design)
+- [SoluM remote](SoluM-remote)
 
 **Examples**
 - [Calendar on a tag](Calendar)
